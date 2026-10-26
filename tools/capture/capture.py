@@ -3,10 +3,15 @@
 Usage (from an Administrator terminal if the tool asks for admin):
   python capture.py "C:\\Program Files\\Vendor\\Tool.exe" log.jsonl
 
+This script opens the tool itself: don't start it separately, and close any copy that is
+already running first. Child processes are followed too (Electron apps such as EPOMAKER
+Driver v4 do their HID work in helper processes).
+
 Do the upload in the tool, then close it (or create a file named STOP next to the log).
 """
 import json
 import os
+import queue
 import sys
 import time
 
@@ -17,15 +22,14 @@ exe, out_path = sys.argv[1], sys.argv[2]
 stop_flag = os.path.join(os.path.dirname(os.path.abspath(out_path)), "STOP")
 if os.path.exists(stop_flag):
     os.remove(stop_flag)
+with open(os.path.join(HERE, "hook.js"), encoding="utf-8") as f:
+    HOOK = f.read()
 
-# Spawn suspended so the hooks see the device being opened at startup.
-pid = frida.spawn([exe], cwd=os.path.dirname(exe))
-session = frida.attach(pid)
-print("spawned pid", pid, flush=True)
-
-counts = {}
+device = frida.get_local_device()
 out = open(out_path, "a", encoding="utf-8")
-detached = []
+counts = {}
+sessions = {}
+children = queue.Queue()  # attach outside Frida's callback thread
 
 
 def on_message(msg, _data):
@@ -34,22 +38,44 @@ def on_message(msg, _data):
         out.write(json.dumps(p) + "\n")
         out.flush()
         counts[p["kind"]] = counts.get(p["kind"], 0) + 1
-        if p["kind"] in ("ready", "open", "close"):
-            print(p, flush=True)
+        if p["kind"] in ("open", "close"):
+            print(p["kind"], "pid", p.get("pid"), p.get("path"), flush=True)
     else:
         print("script message:", msg, flush=True)
 
 
-session.on("detached", lambda reason, crash: detached.append(reason))
-with open(os.path.join(HERE, "hook.js"), encoding="utf-8") as f:
-    script = session.create_script(f.read())
-script.on("message", on_message)
-script.load()
-frida.resume(pid)
+def instrument(pid):
+    try:
+        session = device.attach(pid)
+        session.enable_child_gating()
+        script = session.create_script(HOOK)
+        script.on("message", on_message)
+        script.load()
+        sessions[pid] = session
+        session.on("detached", lambda reason, crash: sessions.pop(pid, None))
+    finally:
+        device.resume(pid)
+
+
+device.on("child-added", lambda child: children.put(child.pid))
+
+# Spawn suspended so the hooks see the device being opened at startup.
+main_pid = device.spawn([exe], cwd=os.path.dirname(exe))
+print("spawned pid", main_pid, "- use THIS window of the tool", flush=True)
+instrument(main_pid)
 
 try:
-    while not detached and not os.path.exists(stop_flag):
-        time.sleep(0.5)
+    while main_pid in sessions and not os.path.exists(stop_flag):
+        try:
+            pid = children.get(timeout=0.5)
+            instrument(pid)
+            print("following child pid", pid, flush=True)
+        except queue.Empty:
+            pass
+        except frida.ProcessNotFoundError:
+            pass
 finally:
-    print("stopping:", detached or "STOP flag", "| counts:", counts, flush=True)
+    print("stopping | counts:", counts, flush=True)
+    if not any(k in counts for k in ("write", "set_output", "set_feature")):
+        print("No HID writes were captured. Was the upload done in the window this script opened?")
     out.close()

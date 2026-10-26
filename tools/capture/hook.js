@@ -17,7 +17,7 @@ function hex(ptr, len) {
   return s;
 }
 function emit(kind, h, data, extra) {
-  send(Object.assign({ t: Date.now(), kind: kind, h: h, path: handles[h] || null, data: data }, extra || {}));
+  send(Object.assign({ t: Date.now(), pid: Process.id, kind: kind, h: h, path: handles[h] || null, data: data }, extra || {}));
 }
 
 const createFileW = exp('kernelbase.dll', 'CreateFileW') || exp('kernel32.dll', 'CreateFileW');
@@ -26,7 +26,7 @@ Interceptor.attach(createFileW, {
   onLeave(ret) {
     if (this.path && /hid#|vid_/i.test(this.path)) {
       handles[ret.toString()] = this.path;
-      send({ t: Date.now(), kind: 'open', h: ret.toString(), path: this.path });
+      send({ t: Date.now(), pid: Process.id, kind: 'open', h: ret.toString(), path: this.path });
     }
   }
 });
@@ -35,7 +35,7 @@ const closeHandle = exp('kernelbase.dll', 'CloseHandle') || exp('kernel32.dll', 
 Interceptor.attach(closeHandle, {
   onEnter(args) {
     const h = args[0].toString();
-    if (handles[h]) { send({ t: Date.now(), kind: 'close', h: h, path: handles[h] }); delete handles[h]; }
+    if (handles[h]) { send({ t: Date.now(), pid: Process.id, kind: 'close', h: h, path: handles[h] }); delete handles[h]; }
   }
 });
 
@@ -109,4 +109,4 @@ Interceptor.attach(ioctl, {
   });
 });
 
-send({ t: Date.now(), kind: 'ready', arch: Process.arch });
+send({ t: Date.now(), pid: Process.id, kind: 'ready', arch: Process.arch });
