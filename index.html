@@ -139,14 +139,14 @@
   .stage { display: flex; flex-direction: column; gap: 14px; min-width: 0; min-height: 0; padding-bottom: 20px; }
   .view { flex: 1; min-height: 0; container-type: size; display: grid; place-items: center; }
   .bezel {
-    width: min(100cqw, calc((100cqh - 36px) * 240 / 135 + 36px));
+    width: min(100cqw, calc((100cqh - 36px) * var(--ar, 1.7778) + 36px));
     position: relative; padding: 18px; border-radius: 22px;
     background: linear-gradient(180deg, #1b1e27, #0f1116);
     border: 1px solid #262a35;
     box-shadow: 0 30px 80px -30px var(--shadow), inset 0 1px 0 rgba(255,255,255,.04);
   }
   .screen {
-    position: relative; width: 100%; aspect-ratio: 240 / 135; border-radius: 8px; overflow: hidden;
+    position: relative; width: 100%; aspect-ratio: var(--ar, 1.7778); border-radius: 8px; overflow: hidden;
     background: #000; outline: 1px solid #000;
   }
   .screen canvas { width: 100%; height: 100%; display: block; image-rendering: pixelated; cursor: grab; touch-action: none; }
@@ -279,7 +279,7 @@
 </head>
 <body>
 <header id="titlebar" class="pywebview-drag-region">
-  <div class="brand pywebview-drag-region"><span class="dot"></span>Shadow Screen <small>EPOMAKER Shadow-S · 240×135</small></div>
+  <div class="brand pywebview-drag-region"><span class="dot"></span>Shadow Screen <small id="modelInfo"></small></div>
   <div class="spacer pywebview-drag-region"></div>
   <div class="tools">
     <span class="pill" id="connPill"><i></i><span id="connText"></span></span>
@@ -438,7 +438,7 @@
 // ---------- i18n ----------
 const I18N = {
   pt: {
-    connect: "Conectar teclado", disconnected: "Desconectado", connected: "Shadow-S conectado",
+    connect: "Conectar teclado", disconnected: "Desconectado", connected: "{name} conectado",
     dropTitle: "Solte GIFs e imagens aqui", dropSub: "ou clique para escolher · dá para soltar vários de uma vez",
     fullPreview: "▶ Prévia da fila inteira",
     hints: "<kbd>arrastar</kbd> move · <kbd>scroll</kbd> zoom · <kbd>duplo clique</kbd> centraliza",
@@ -474,7 +474,7 @@ const I18N = {
     secs: "~{s} s", mins: "~{m} min {s} s",
   },
   en: {
-    connect: "Connect keyboard", disconnected: "Disconnected", connected: "Shadow-S connected",
+    connect: "Connect keyboard", disconnected: "Disconnected", connected: "{name} connected",
     dropTitle: "Drop GIFs and images here", dropSub: "or click to choose · you can drop several at once",
     fullPreview: "▶ Preview whole queue",
     hints: "<kbd>drag</kbd> to pan · <kbd>scroll</kbd> to zoom · <kbd>double-click</kbd> to center",
@@ -510,7 +510,7 @@ const I18N = {
     secs: "~{s} s", mins: "~{m} min {s} s",
   },
   zh: {
-    connect: "连接键盘", disconnected: "未连接", connected: "Shadow-S 已连接",
+    connect: "连接键盘", disconnected: "未连接", connected: "{name} 已连接",
     dropTitle: "将 GIF 和图片拖到这里", dropSub: "或点击选择 · 可一次拖入多个",
     fullPreview: "▶ 预览整个队列",
     hints: "<kbd>拖动</kbd> 移动 · <kbd>滚轮</kbd> 缩放 · <kbd>双击</kbd> 居中",
@@ -600,13 +600,19 @@ $("themeBtn").addEventListener("click", () => {
 });
 $("langSel").addEventListener("change", e => { lang = e.target.value; store.set("ss-lang", lang); applyI18n(); });
 
-// ---------- Protocol (reverse-engineered from Image Custom Tool, see PROTOCOL.md) ----------
-const W = 240, H = 135, FRAME_BYTES = W * H * 2, STRIDE = 0x10000, CHUNK = 56, MAX_FRAMES = 50;
+// ---------- Keyboard model ----------
+// The desktop launcher reports the connected model (launcher/models/*). The browser-only
+// WebHID fallback below speaks the Shadow-S protocol only.
+const SHADOW_S = { id: "shadow-s", name: "EPOMAKER Shadow-S", width: 240, height: 135, maxFrames: 50, secondsPerFrame: 2.4, preview: "rgb565" };
+let model = SHADOW_S;
+let W = model.width, H = model.height, MAX_FRAMES = model.maxFrames, SECONDS_PER_FRAME = model.secondsPerFrame;
+const MIN_IV = 10, MAX_IV = 60000;
+
+// ---------- Shadow-S protocol for the WebHID fallback (see PROTOCOL.md) ----------
+const FRAME_BYTES = 240 * 135 * 2, STRIDE = 0x10000, CHUNK = 56;
 const VID = 0x320F, PID = 0x5055, USAGE_PAGE = 0xFF1C, REPORT_ID = 0x04;
 const CMD = { BEGIN: 0x01, END: 0x02, CFG_READ: 0x05, CFG_WRITE: 0x06, DATA: 0x21, PREPARE: 0x23 };
 const CFG_FRAMES = 34, CFG_CLOCK = 35, CFG_INTERVAL = 43;
-const SECONDS_PER_FRAME = 2.4; // measured: ~1171 packets per 64 KB frame at ~2 ms each
-const MIN_IV = 10, MAX_IV = 60000;
 
 function packet(cmd, len = 0, addr = 0, payload = null) {
   const p = new Uint8Array(64);
@@ -650,6 +656,7 @@ function applyStatus(s) {
   hw.connected = s.connected;
   hw.conflicts = s.conflicts || [];
   hw.unsupported = s.unsupported || [];
+  if (s.model) setModel(s.model);
   if (was && !s.connected && !state.busy) hw.dismissed = false; // unplugged: ask again
   updateConn();
   renderModal();
@@ -882,10 +889,29 @@ function recompute() {
 }
 
 // ---------- Rendering ----------
-const work = new OffscreenCanvas(W, H);
-const wctx = work.getContext("2d", { willReadFrequently: true });
+let work = new OffscreenCanvas(W, H);
+let wctx = work.getContext("2d", { willReadFrequently: true });
 const screen = $("screen");
 const sctx = screen.getContext("2d");
+
+function renderModelInfo() {
+  $("modelInfo").textContent = `${model.name} · ${W}×${H}`;
+  document.documentElement.style.setProperty("--ar", W / H);
+}
+
+// Switch the whole app to another keyboard's screen size and limits.
+function setModel(m) {
+  if (m.id === model.id && m.width === W && m.height === H && m.maxFrames === MAX_FRAMES) return;
+  model = m;
+  W = m.width; H = m.height; MAX_FRAMES = m.maxFrames; SECONDS_PER_FRAME = m.secondsPerFrame;
+  screen.width = W; screen.height = H;
+  work = new OffscreenCanvas(W, H);
+  wctx = work.getContext("2d", { willReadFrequently: true });
+  $("strip").innerHTML = "";
+  for (const it of state.queue) it.count = Math.min(it.count, MAX_FRAMES);
+  renderModelInfo();
+  structureChanged();
+}
 
 function scales(it) {
   if (it.fit === "stretch") return [W / it.w * it.zoom, H / it.h * it.zoom];
@@ -938,7 +964,7 @@ function to565(img, out, preview) {
 function renderTo(ctx, it, fi) {
   drawFrame(wctx, it, fi);
   const img = wctx.getImageData(0, 0, W, H);
-  to565(img, null, true);
+  if (model.preview === "rgb565") to565(img, null, true);
   ctx.putImageData(img, 0, 0);
 }
 
@@ -1009,7 +1035,7 @@ function renderStatus() {
 function updateConn() {
   const on = isConnected();
   $("connPill").classList.toggle("on", on);
-  $("connText").textContent = t(on ? "connected" : "disconnected");
+  $("connText").textContent = t(on ? "connected" : "disconnected", { name: model.name });
   $("connectBtn").classList.toggle("hide", on || hw.mode === "local");
   // Warn about apps that fight over the HID interface.
   if (on && hw.conflicts.length && !state.busy) {
@@ -1254,8 +1280,31 @@ async function uploadWebHID(blob, n, interval, onProgress) {
   await xfer(packet(CMD.END));
 }
 
+// WebHID payload: Shadow-S RGB565 big-endian frames, each padded to a 64 KB block.
+function buildShadowBlob(seq) {
+  const blob = new Uint8Array(seq.length * STRIDE);
+  seq.forEach(({ it, fi }, k) => {
+    drawFrame(wctx, it, fi);
+    to565(wctx.getImageData(0, 0, W, H), blob.subarray(k * STRIDE, k * STRIDE + FRAME_BYTES), false);
+  });
+  return blob;
+}
+
+// Launcher payload: raw RGB888 frames; the model module encodes them for its keyboard.
+function buildRgbBlob(seq) {
+  const size = W * H * 3, blob = new Uint8Array(seq.length * size);
+  seq.forEach(({ it, fi }, k) => {
+    drawFrame(wctx, it, fi);
+    const d = wctx.getImageData(0, 0, W, H).data;
+    for (let i = 0, o = k * size; i < d.length; i += 4, o += 3) {
+      blob[o] = d[i]; blob[o + 1] = d[i + 1]; blob[o + 2] = d[i + 2];
+    }
+  });
+  return blob;
+}
+
 async function uploadLocal(blob, n, interval, onProgress) {
-  const r = await fetch(`/api/upload?frames=${n}&interval=${interval}`, { method: "POST", body: blob });
+  const r = await fetch(`/api/upload?frames=${n}&interval=${interval}&model=${encodeURIComponent(model.id)}`, { method: "POST", body: blob });
   if (!r.ok) {
     let msg = String(r.status);
     try { msg = (await r.json()).error; } catch {}
@@ -1285,17 +1334,13 @@ $("sendBtn").addEventListener("click", async () => {
     const frac = done / total, el = (performance.now() - tData) / 1000;
     bar.style.width = `${(frac * 100).toFixed(1)}%`;
     setStatus("sending", {
-      i: Math.min(n, Math.floor(done * CHUNK / STRIDE) + 1), n,
+      i: Math.min(n, Math.floor(frac * n) + 1), n,
       eta: frac > 0.02 ? fmtSecs(el / frac - el) : fmtSecs(n * SECONDS_PER_FRAME),
     });
   };
   try {
-    const blob = new Uint8Array(n * STRIDE);
-    seq.forEach(({ it, fi }, k) => {
-      drawFrame(wctx, it, fi);
-      to565(wctx.getImageData(0, 0, W, H), blob.subarray(k * STRIDE, k * STRIDE + FRAME_BYTES), false);
-    });
-    await (hw.mode === "local" ? uploadLocal : uploadWebHID)(blob, n, interval, onProgress);
+    if (hw.mode === "local") await uploadLocal(buildRgbBlob(seq), n, interval, onProgress);
+    else await uploadWebHID(buildShadowBlob(seq), n, interval, onProgress);
     bar.style.width = "100%";
     setStatus("done", { n, s: ((performance.now() - tClick) / 1000).toFixed(1) }, "ok");
   } catch (err) {
@@ -1319,6 +1364,7 @@ $("sendBtn").addEventListener("click", async () => {
   hw.booted = true;
   applyI18n();
 })();
+renderModelInfo();
 applyI18n();
 </script>
 </body>

@@ -41,8 +41,17 @@ The launcher runs on the signed `pythonw.exe` rather than a bundled `.exe`, beca
 Smart App Control blocks unsigned executables. Without the launcher, the page also runs from any
 `localhost`/HTTPS server and falls back to WebHID through Chrome's device picker.
 
-Only the wired Shadow-S (`320F:5055`) is supported. Other EPOMAKER models are detected and
-reported as unsupported, and nothing is sent to them.
+Only the wired Shadow-S (`320F:5055`) is supported so far. Other EPOMAKER models are detected
+and reported as unsupported, and nothing is sent to them.
+
+## Adding a keyboard
+
+Each keyboard is a module in `launcher/models/` (see `_template.py`), and the app adapts to its
+resolution and frame limit. [docs/ADICIONAR-TECLADO.md](docs/ADICIONAR-TECLADO.md) (in
+Portuguese) walks through identifying the keyboard, capturing the official tool, decoding the
+protocol, writing the module and testing it safely. `tools/` has the helpers: `list_devices.py`,
+plus `capture/` with a Frida capture for desktop tools, a WebHID capture for web tools, a test-GIF
+generator and a log summarizer.
 
 ## How it works
 

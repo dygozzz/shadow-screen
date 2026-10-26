@@ -6,7 +6,7 @@ import time
 from PIL import Image, ImageDraw
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "launcher"))
-import shadow  # noqa: E402
+from models import shadow_s as shadow  # noqa: E402
 
 frames = []
 for c in [(255, 0, 255), (0, 255, 255), (255, 255, 0)]:

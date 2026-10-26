@@ -16,7 +16,7 @@ import time
 import urllib.parse
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-import shadow  # noqa: E402
+import models  # noqa: E402
 
 try:
     import hid  # noqa: F401
@@ -44,10 +44,6 @@ upload_lock = threading.Lock()
 _conflicts = {"t": 0.0, "names": []}
 
 
-def keyboard_connected():
-    return any(d["interface_number"] == shadow.IFACE for d in hid.enumerate(shadow.VID, shadow.PID))
-
-
 def running_conflicts():
     """Apps that share the keyboard's HID interface (cached for 2 s; tasklist is slowish)."""
     if time.time() - _conflicts["t"] > 2:
@@ -62,31 +58,31 @@ _others = {"t": 0.0, "names": []}
 
 
 def unsupported_devices():
-    """Other EPOMAKER/Evision devices that are plugged in (e.g. models without this screen)."""
+    """Other EPOMAKER devices that are plugged in (e.g. models we don't support yet).
+
+    Matched by name, not vendor id: chip vendors like Evision (320F) also make mice etc."""
     if time.time() - _others["t"] > 2:
         names = set()
         for d in hid.enumerate():
-            if (d["vendor_id"], d["product_id"]) == (shadow.VID, shadow.PID):
+            if models.is_supported(d["vendor_id"], d["product_id"]):
                 continue
             name = (d.get("product_string") or "").strip()
-            if d["vendor_id"] == shadow.VID or "epomaker" in name.lower():
+            maker = (d.get("manufacturer_string") or "").strip()
+            if "epomaker" in (name + " " + maker).lower():
                 names.add(name or f"{d['vendor_id']:04X}:{d['product_id']:04X}")
         _others.update(t=time.time(), names=sorted(names))
     return _others["names"]
 
 
-def run_upload(blob, n, interval):
-    kb = None
+def run_upload(model, blob, n, interval):
     try:
-        frames = [blob[k * shadow.FRAME_STRIDE: k * shadow.FRAME_STRIDE + shadow.FRAME_BYTES] for k in range(n)]
-        kb = shadow.Keyboard()
-        kb.upload(frames, interval, progress=lambda i, total: job.update(done=i, total=total))
+        size = model.WIDTH * model.HEIGHT * 3
+        frames = [blob[k * size:(k + 1) * size] for k in range(n)]
+        model.upload(frames, interval, progress=lambda i, total: job.update(done=i, total=total))
         job.update(phase="done")
     except Exception as e:  # reported to the page
         job.update(phase="error", error=str(e))
     finally:
-        if kb:
-            kb.close()
         upload_lock.release()
 
 
@@ -112,10 +108,11 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             if not HAS_HID:
                 return self.send_error(404)
             if self.path.startswith("/api/status"):
-                connected = keyboard_connected()
+                model = models.find_connected()
                 return self.send_json({
-                    "connected": connected, "conflicts": running_conflicts(), "job": job,
-                    "unsupported": [] if connected else unsupported_devices(),
+                    "connected": model is not None, "model": models.info(model) if model else None,
+                    "conflicts": running_conflicts(), "job": job,
+                    "unsupported": [] if model else unsupported_devices(),
                 })
             return self.send_error(404)
         super().do_GET()
@@ -125,17 +122,21 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             return self.send_error(404)
         q = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
         try:
-            n, interval = int(q["frames"][0]), int(q["interval"][0])
+            n, interval, model_id = int(q["frames"][0]), int(q["interval"][0]), q["model"][0]
             length = int(self.headers["Content-Length"])
         except (KeyError, ValueError):
-            return self.send_json({"error": "parâmetros inválidos"}, 400)
-        if not (1 <= n <= shadow.MAX_FRAMES and 10 <= interval <= 60000 and length == n * shadow.FRAME_STRIDE):
-            return self.send_json({"error": "parâmetros inválidos"}, 400)
+            return self.send_json({"error": "invalid parameters"}, 400)
+        model = models.find_connected()
+        if model is None or model.ID != model_id:
+            return self.send_json({"error": "keyboard not connected"}, 409)
+        frame_size = model.WIDTH * model.HEIGHT * 3
+        if not (1 <= n <= model.MAX_FRAMES and 10 <= interval <= 60000 and length == n * frame_size):
+            return self.send_json({"error": "invalid parameters"}, 400)
         blob = self.rfile.read(length)
         if not upload_lock.acquire(blocking=False):
-            return self.send_json({"error": "já existe um envio em andamento"}, 409)
+            return self.send_json({"error": "an upload is already running"}, 409)
         job.update(phase="sending", done=0, total=0, error=None)
-        threading.Thread(target=run_upload, args=(blob, n, interval), daemon=True).start()
+        threading.Thread(target=run_upload, args=(model, blob, n, interval), daemon=True).start()
         self.send_json({"ok": True}, 202)
 
 

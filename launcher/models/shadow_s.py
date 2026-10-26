@@ -2,16 +2,24 @@
 
 Packet (64 bytes, HID report 0x04 on interface MI_03):
   [0x04][sum16 LE of bytes 3..63][cmd][len][addr24 LE][payload...]
+
+Model interface (see models/__init__.py): ID, NAME, VID, PID, WIDTH, HEIGHT, MAX_FRAMES,
+SECONDS_PER_FRAME, PREVIEW, is_connected() and upload(frames_rgb, interval_ms, progress).
 """
 import datetime
 import time
 
+ID = "shadow-s"
+NAME = "EPOMAKER Shadow-S"
 VID, PID, IFACE = 0x320F, 0x5055, 3
 W, H = 240, 135
+WIDTH, HEIGHT = W, H
 FRAME_BYTES = W * H * 2
 FRAME_STRIDE = 0x10000
 CHUNK = 56
 MAX_FRAMES = 50
+SECONDS_PER_FRAME = 2.4  # ~1171 packets per 64 KB frame at ~2 ms each
+PREVIEW = "rgb565"  # how the page should simulate the screen's colors
 
 CMD_BEGIN, CMD_END = 0x01, 0x02
 CMD_CFG_READ, CMD_CFG_WRITE = 0x05, 0x06
@@ -48,6 +56,17 @@ def rgb565_be(img):
     """PIL RGB image 240x135 -> big-endian RGB565 bytes."""
     out = bytearray(FRAME_BYTES)
     for i, (r, g, b) in enumerate(img.getdata()):
+        v = ((r >> 3) << 11) | ((g >> 2) << 5) | (b >> 3)
+        out[2 * i] = v >> 8
+        out[2 * i + 1] = v & 0xFF
+    return bytes(out)
+
+
+def rgb_to_565_be(rgb):
+    """Raw RGB888 bytes (W*H*3) -> big-endian RGB565 bytes."""
+    out = bytearray(FRAME_BYTES)
+    for i in range(W * H):
+        r, g, b = rgb[3 * i], rgb[3 * i + 1], rgb[3 * i + 2]
         v = ((r >> 3) << 11) | ((g >> 2) << 5) | (b >> 3)
         out[2 * i] = v >> 8
         out[2 * i + 1] = v & 0xFF
@@ -117,3 +136,19 @@ class Keyboard:
         self.xfer(packet(CMD_END))
         if progress:
             progress(len(pkts), len(pkts))
+
+
+# ---------- Model interface ----------
+def is_connected():
+    import hid
+
+    return any(d["interface_number"] == IFACE for d in hid.enumerate(VID, PID))
+
+
+def upload(frames_rgb, interval_ms, progress=None):
+    """frames_rgb: list of raw RGB888 frames (WIDTH*HEIGHT*3 bytes each)."""
+    kb = Keyboard()
+    try:
+        kb.upload([rgb_to_565_be(f) for f in frames_rgb], interval_ms, progress)
+    finally:
+        kb.close()
