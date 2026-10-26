@@ -46,9 +46,16 @@ python tools\list_devices.py
 Vai aparecer algo assim (exemplo do Shadow-S):
 
 ```
-320F:5055  interface 1   usage_page 0xFF60  usage 0x61  EPOMAKER Shadow-S   <-- vendor-defined
-320F:5055  interface 3   usage_page 0xFF1C  usage 0x92  EPOMAKER Shadow-S   <-- vendor-defined
+320F:5055  RDR EPOMAKER Shadow-S
+    interface 0   usage_page 0x0001  usage 0x06
+    interface 1   usage_page 0xFF60  usage 0x61   <-- vendor-defined
+    interface 2   usage_page 0x0001  usage 0x06
+    interface 2   usage_page 0xFFEF  usage 0x00   <-- vendor-defined
+    interface 3   usage_page 0xFF1C  usage 0x92   <-- vendor-defined
 ```
+
+Se o seu teclado não aparecer, rode `python tools\list_devices.py --all` e procure pelo nome
+dele.
 
 Anote:
 - **VID:PID**, o par antes do espaço (`320F:5055` no exemplo);
@@ -84,14 +91,29 @@ cd caminho\do\shadow-screen
 python tools\capture\capture.py "C:\Program Files\...\EPOMAKER.exe" rt85-log.jsonl
 ```
 
-O programa abre já sendo gravado. Nele:
+O programa abre já sendo gravado. **Feche antes qualquer cópia dele**, inclusive pelo ícone perto
+do relógio, e **não abra o programa por outro jeito**. Nele:
 1. importe o `teste.gif`;
 2. **anote o intervalo/velocidade** que estiver configurado (ex.: 500 ms);
 3. envie para o teclado;
 4. **confira que o GIF apareceu certinho na tela do teclado**;
 5. feche o programa oficial. A gravação para sozinha.
 
+Durante a gravação, o terminal mostra `capturing: N packets sent to devices so far`. Se essa
+linha nunca aparecer, nada está sendo gravado.
+
 Se aparecer `unable to spawn ... 0x000002e4`, é porque o terminal não está como administrador.
+
+**Se não gravar nada** (programas que ficam na bandeja ou que se reabrem sozinhos): abra o
+programa oficial **normalmente**, deixe ele aberto e grave conectando na cópia que já está
+rodando. Troque o nome pelo nome do .exe dele:
+
+```powershell
+python tools\capture\capture.py --attach "NomeDoPrograma.exe" rt85-log.jsonl
+```
+
+Quando aparecer `attached to N process(es)`, faça o envio do GIF. No fim, feche o programa ou
+crie um arquivo chamado `STOP` na pasta para encerrar a gravação.
 
 ### 4b. Se o programa oficial é um site (abre no Chrome)
 

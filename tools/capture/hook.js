@@ -1,6 +1,7 @@
-// Logs every HID I/O the Image Custom Tool does against the Epomaker keyboard.
+// Logs the HID I/O a keyboard's official tool does (WriteFile/ReadFile/DeviceIoControl/HidD_*).
 const handles = {};          // handle -> device path (only for HID paths)
 const pendingReads = {};     // overlapped ptr -> {h, buf}
+const unknownDev = {};       // handle -> true/false: device handle opened before we attached?
 
 function mod(name) {
   return Process.findModuleByName(name);
@@ -20,6 +21,15 @@ function emit(kind, h, data, extra) {
   send(Object.assign({ t: Date.now(), pid: Process.id, kind: kind, h: h, path: handles[h] || null, data: data }, extra || {}));
 }
 
+// Handles opened before the hooks (e.g. with --attach) have no known path. Device handles report
+// FILE_TYPE_UNKNOWN (0); files, pipes and consoles don't, so treat those 0s as devices.
+const getFileType = new NativeFunction(exp('kernelbase.dll', 'GetFileType') || exp('kernel32.dll', 'GetFileType'), 'uint32', ['pointer']);
+function isDevice(h) {
+  if (handles[h]) return true;
+  if (unknownDev[h] === undefined) unknownDev[h] = getFileType(ptr(h)) === 0;
+  return unknownDev[h];
+}
+
 const createFileW = exp('kernelbase.dll', 'CreateFileW') || exp('kernel32.dll', 'CreateFileW');
 Interceptor.attach(createFileW, {
   onEnter(args) { this.path = args[0].isNull() ? '' : args[0].readUtf16String(); },
@@ -35,6 +45,7 @@ const closeHandle = exp('kernelbase.dll', 'CloseHandle') || exp('kernel32.dll', 
 Interceptor.attach(closeHandle, {
   onEnter(args) {
     const h = args[0].toString();
+    delete unknownDev[h];
     if (handles[h]) { send({ t: Date.now(), pid: Process.id, kind: 'close', h: h, path: handles[h] }); delete handles[h]; }
   }
 });
@@ -43,7 +54,7 @@ const writeFile = exp('kernelbase.dll', 'WriteFile') || exp('kernel32.dll', 'Wri
 Interceptor.attach(writeFile, {
   onEnter(args) {
     const h = args[0].toString();
-    if (handles[h]) emit('write', h, hex(args[1], args[2].toInt32()));
+    if (isDevice(h)) emit('write', h, hex(args[1], args[2].toInt32()));
   }
 });
 
@@ -54,7 +65,7 @@ Interceptor.attach(readFile, {
     this.buf = args[1]; this.len = args[2].toInt32(); this.nread = args[3]; this.ov = args[4];
   },
   onLeave(ret) {
-    if (!handles[this.h]) return;
+    if (!isDevice(this.h)) return;
     if (ret.toInt32() !== 0) {
       const n = this.nread.isNull() ? this.len : this.nread.readU32();
       emit('read', this.h, hex(this.buf, n));
@@ -93,20 +104,30 @@ Interceptor.attach(ioctl, {
   }
 });
 
-// hid.dll helpers (Set/GetFeature, Set/GetInputReport, SetOutputReport)
-[['HidD_SetOutputReport', 'set_output'], ['HidD_SetFeature', 'set_feature']].forEach(([fn, kind]) => {
-  const a = exp('hid.dll', fn);
-  if (a) Interceptor.attach(a, {
-    onEnter(args) { this.h = args[0].toString(); this.d = hex(args[1], args[2].toInt32()); },
-    onLeave(r) { emit(kind, this.h, this.d, { ok: r.toInt32() }); }
+// hid.dll helpers (Set/GetFeature, Set/GetInputReport, SetOutputReport). hid.dll is often loaded
+// lazily (e.g. by Electron apps), so hook it whenever it shows up.
+let hidHooked = false;
+function hookHid() {
+  if (hidHooked || !mod('hid.dll')) return;
+  hidHooked = true;
+  [['HidD_SetOutputReport', 'set_output'], ['HidD_SetFeature', 'set_feature']].forEach(([fn, kind]) => {
+    const a = exp('hid.dll', fn);
+    if (a) Interceptor.attach(a, {
+      onEnter(args) { this.h = args[0].toString(); this.d = hex(args[1], args[2].toInt32()); },
+      onLeave(r) { emit(kind, this.h, this.d, { ok: r.toInt32() }); }
+    });
   });
-});
-[['HidD_GetFeature', 'get_feature'], ['HidD_GetInputReport', 'get_input']].forEach(([fn, kind]) => {
-  const a = exp('hid.dll', fn);
-  if (a) Interceptor.attach(a, {
-    onEnter(args) { this.h = args[0].toString(); this.b = args[1]; this.l = args[2].toInt32(); },
-    onLeave(r) { emit(kind, this.h, hex(this.b, this.l), { ok: r.toInt32() }); }
+  [['HidD_GetFeature', 'get_feature'], ['HidD_GetInputReport', 'get_input']].forEach(([fn, kind]) => {
+    const a = exp('hid.dll', fn);
+    if (a) Interceptor.attach(a, {
+      onEnter(args) { this.h = args[0].toString(); this.b = args[1]; this.l = args[2].toInt32(); },
+      onLeave(r) { emit(kind, this.h, hex(this.b, this.l), { ok: r.toInt32() }); }
+    });
   });
-});
+}
+hookHid();
+if (typeof Process.attachModuleObserver === 'function') {
+  Process.attachModuleObserver({ onAdded(m) { if (m.name.toLowerCase() === 'hid.dll') hookHid(); } });
+}
 
 send({ t: Date.now(), pid: Process.id, kind: 'ready', arch: Process.arch });
