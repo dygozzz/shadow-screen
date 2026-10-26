@@ -603,10 +603,10 @@ $("langSel").addEventListener("change", e => { lang = e.target.value; store.set(
 // ---------- Keyboard model ----------
 // The desktop launcher reports the connected model (launcher/models/*). The browser-only
 // WebHID fallback below speaks the Shadow-S protocol only.
-const SHADOW_S = { id: "shadow-s", name: "EPOMAKER Shadow-S", width: 240, height: 135, maxFrames: 50, secondsPerFrame: 2.4, preview: "rgb565" };
+const SHADOW_S = { id: "shadow-s", name: "EPOMAKER Shadow-S", width: 240, height: 135, maxFrames: 50, secondsPerFrame: 2.4, preview: "rgb565", minInterval: 10, maxInterval: 60000 };
 let model = SHADOW_S;
 let W = model.width, H = model.height, MAX_FRAMES = model.maxFrames, SECONDS_PER_FRAME = model.secondsPerFrame;
-const MIN_IV = 10, MAX_IV = 60000;
+let MIN_IV = model.minInterval, MAX_IV = model.maxInterval;
 
 // ---------- Shadow-S protocol for the WebHID fallback (see PROTOCOL.md) ----------
 const FRAME_BYTES = 240 * 135 * 2, STRIDE = 0x10000, CHUNK = 56;
@@ -904,6 +904,9 @@ function setModel(m) {
   if (m.id === model.id && m.width === W && m.height === H && m.maxFrames === MAX_FRAMES) return;
   model = m;
   W = m.width; H = m.height; MAX_FRAMES = m.maxFrames; SECONDS_PER_FRAME = m.secondsPerFrame;
+  MIN_IV = m.minInterval ?? 10; MAX_IV = m.maxInterval ?? 60000;
+  $("interval").min = MIN_IV; $("interval").max = MAX_IV;
+  state.interval = clampIv(state.interval);
   screen.width = W; screen.height = H;
   work = new OffscreenCanvas(W, H);
   wctx = work.getContext("2d", { willReadFrequently: true });

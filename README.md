@@ -41,7 +41,7 @@ The launcher runs on the signed `pythonw.exe` rather than a bundled `.exe`, beca
 Smart App Control blocks unsigned executables. Without the launcher, the page also runs from any
 `localhost`/HTTPS server and falls back to WebHID through Chrome's device picker.
 
-Only the wired Shadow-S (`320F:5055`) is supported so far. Other EPOMAKER models are detected
+Supported: **EPOMAKER Shadow-S** (wired, `320F:5055`), tested. **EPOMAKER RT85** (wired, `3151:5002`, firmware id 2895) is implemented from the vendor app's code but not yet tested on hardware. Other EPOMAKER models are detected
 and reported as unsupported, and nothing is sent to them.
 
 ## Adding a keyboard

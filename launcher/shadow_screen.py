@@ -9,6 +9,7 @@ import functools
 import http.server
 import json
 import os
+import socket
 import subprocess
 import sys
 import threading
@@ -28,7 +29,7 @@ PORT = 8765  # fixed: WebHID permissions (browser fallback) are remembered per o
 URL = f"http://localhost:{PORT}/"
 BASE = getattr(sys, "_MEIPASS", os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 PROFILE = os.path.join(os.environ.get("LOCALAPPDATA", BASE), "ShadowScreen", "browser")
-CONFLICTS = {"via.exe": "VIA", "image custom tool.exe": "Image Custom Tool"}
+CONFLICTS = {"via.exe": "VIA", "image custom tool.exe": "Image Custom Tool", "epomaker driver v4.exe": "EPOMAKER Driver"}
 
 BROWSERS = [
     r"%ProgramFiles%\Google\Chrome\Application\chrome.exe",
@@ -44,13 +45,24 @@ upload_lock = threading.Lock()
 _conflicts = {"t": 0.0, "names": []}
 
 
+def port_open(port):
+    try:
+        with socket.create_connection(("127.0.0.1", port), timeout=0.05):
+            return True
+    except OSError:
+        return False
+
+
 def running_conflicts():
     """Apps that share the keyboard's HID interface (cached for 2 s; tasklist is slowish)."""
     if time.time() - _conflicts["t"] > 2:
         out = subprocess.run(["tasklist", "/FO", "CSV", "/NH"], capture_output=True, text=True,
                              creationflags=subprocess.CREATE_NO_WINDOW).stdout
         names = {line.split('","')[0].strip('"').lower() for line in out.splitlines() if line}
-        _conflicts.update(t=time.time(), names=sorted({v for k, v in CONFLICTS.items() if k in names}))
+        found = {v for k, v in CONFLICTS.items() if k in names}
+        if port_open(3838):  # EPOMAKER Driver v4's HID service (Rongyuan), which can lock the device
+            found.add("EPOMAKER Driver")
+        _conflicts.update(t=time.time(), names=sorted(found))
     return _conflicts["names"]
 
 
@@ -130,7 +142,8 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         if model is None or model.ID != model_id:
             return self.send_json({"error": "keyboard not connected"}, 409)
         frame_size = model.WIDTH * model.HEIGHT * 3
-        if not (1 <= n <= model.MAX_FRAMES and 10 <= interval <= 60000 and length == n * frame_size):
+        lo, hi = getattr(model, "MIN_INTERVAL_MS", 10), getattr(model, "MAX_INTERVAL_MS", 60000)
+        if not (1 <= n <= model.MAX_FRAMES and lo <= interval <= hi and length == n * frame_size):
             return self.send_json({"error": "invalid parameters"}, 400)
         blob = self.rfile.read(length)
         if not upload_lock.acquire(blocking=False):
