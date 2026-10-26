@@ -1,0 +1,715 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Shadow Screen</title>
+<style>
+  :root {
+    --bg: #0a0b0e;
+    --panel: #12141a;
+    --panel-2: #191c24;
+    --line: #262a35;
+    --text: #e8eaf0;
+    --muted: #8a90a0;
+    --accent: #8b7bff;
+    --accent-2: #b3a8ff;
+    --ok: #3ddc97;
+    --warn: #ffb547;
+    --err: #ff5d6c;
+    --radius: 14px;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body {
+    background: radial-gradient(1200px 600px at 20% -10%, #1a1640 0%, transparent 60%), var(--bg);
+    color: var(--text);
+    font: 14px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  button, input, select { font: inherit; color: inherit; }
+  header {
+    display: flex; align-items: center; justify-content: space-between; gap: 16px;
+    padding: 18px 28px; border-bottom: 1px solid var(--line);
+  }
+  .brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 17px; letter-spacing: .2px; }
+  .brand .dot { width: 10px; height: 10px; border-radius: 3px; background: var(--accent); box-shadow: 0 0 14px var(--accent); }
+  .brand small { font-weight: 500; color: var(--muted); font-size: 13px; }
+  .conn { display: flex; align-items: center; gap: 10px; }
+  .pill {
+    display: inline-flex; align-items: center; gap: 8px; padding: 6px 12px; border-radius: 999px;
+    background: var(--panel-2); border: 1px solid var(--line); color: var(--muted); font-size: 13px;
+  }
+  .pill i { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); }
+  .pill.on { color: var(--text); }
+  .pill.on i { background: var(--ok); box-shadow: 0 0 8px var(--ok); }
+
+  .btn {
+    border: 1px solid var(--line); background: var(--panel-2); padding: 8px 14px; border-radius: 10px;
+    cursor: pointer; transition: border-color .15s, background .15s;
+  }
+  .btn:hover { border-color: #3a3f4d; }
+  .btn.primary { background: var(--accent); border-color: var(--accent); color: #0b0820; font-weight: 650; }
+  .btn.primary:hover { background: var(--accent-2); }
+  .btn:disabled { opacity: .45; cursor: not-allowed; }
+
+  main {
+    display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 24px;
+    padding: 24px 28px 32px; max-width: 1280px; margin: 0 auto;
+  }
+  @media (max-width: 980px) { main { grid-template-columns: 1fr; } }
+
+  /* Stage */
+  .stage { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+  .bezel {
+    position: relative; padding: 18px; border-radius: 22px;
+    background: linear-gradient(180deg, #1b1e27, #0f1116);
+    border: 1px solid var(--line);
+    box-shadow: 0 30px 80px -30px rgba(139, 123, 255, .35), inset 0 1px 0 rgba(255,255,255,.04);
+  }
+  .screen {
+    position: relative; width: 100%; aspect-ratio: 240 / 135; border-radius: 8px; overflow: hidden;
+    background: #000; outline: 1px solid #000;
+  }
+  .screen canvas {
+    width: 100%; height: 100%; display: block; image-rendering: pixelated; cursor: grab; touch-action: none;
+  }
+  .screen canvas.dragging { cursor: grabbing; }
+  .drop {
+    position: absolute; inset: 0; display: grid; place-items: center; text-align: center;
+    color: var(--muted); border: 2px dashed #2c3140; border-radius: 8px; cursor: pointer;
+    background: repeating-linear-gradient(45deg, #0c0d11 0 12px, #0e1015 12px 24px);
+  }
+  .drop b { display: block; color: var(--text); font-size: 18px; margin-bottom: 4px; }
+  .drop.hidden { display: none; }
+  body.dragover .bezel { border-color: var(--accent); }
+  .stage-meta { display: flex; justify-content: space-between; gap: 12px; color: var(--muted); font-size: 13px; flex-wrap: wrap; }
+  .stage-meta kbd { background: var(--panel-2); border: 1px solid var(--line); border-radius: 5px; padding: 0 5px; font: 12px ui-monospace, monospace; color: var(--text); }
+
+  .strip {
+    display: flex; gap: 6px; overflow-x: auto; padding: 4px 2px 8px; scrollbar-width: thin;
+  }
+  .strip canvas {
+    flex: 0 0 auto; width: 64px; height: 36px; border-radius: 4px; outline: 1px solid var(--line);
+    image-rendering: pixelated; opacity: .6;
+  }
+  .strip canvas.cur { outline: 2px solid var(--accent); opacity: 1; }
+
+  /* Panel */
+  .panel { display: flex; flex-direction: column; gap: 14px; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px; }
+  .card h3 { margin: 0 0 12px; font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); font-weight: 650; }
+  .row { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 10px; }
+  .row:first-of-type { margin-top: 0; }
+  .row label { color: var(--muted); }
+  .val { font-variant-numeric: tabular-nums; color: var(--text); min-width: 64px; text-align: right; }
+  .file { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+  .file .name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 600; }
+  .file .sub { color: var(--muted); font-size: 12.5px; }
+
+  .seg { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; background: var(--panel-2); border: 1px solid var(--line); border-radius: 10px; padding: 3px; gap: 3px; width: 100%; }
+  .seg button { border: 0; background: transparent; padding: 7px 6px; border-radius: 7px; cursor: pointer; color: var(--muted); }
+  .seg button.on { background: #2a2650; color: var(--text); }
+
+  input[type=range] { width: 100%; accent-color: var(--accent); }
+  .slider { margin-top: 10px; }
+  .slider .top { display: flex; justify-content: space-between; color: var(--muted); }
+  .dual { position: relative; height: 22px; }
+  .dual input { position: absolute; inset: 0; pointer-events: none; background: none; -webkit-appearance: none; appearance: none; }
+  .dual input::-webkit-slider-thumb { pointer-events: auto; -webkit-appearance: none; width: 14px; height: 14px; border-radius: 50%; background: var(--accent); border: 2px solid #0b0820; cursor: pointer; }
+  .dual .track { position: absolute; left: 0; right: 0; top: 9px; height: 4px; border-radius: 2px; background: var(--line); }
+  .dual .fill { position: absolute; top: 9px; height: 4px; border-radius: 2px; background: var(--accent); }
+  .num { width: 76px; background: var(--panel-2); border: 1px solid var(--line); border-radius: 8px; padding: 5px 8px; text-align: right; }
+  .check { display: inline-flex; align-items: center; gap: 8px; cursor: pointer; color: var(--muted); }
+  .check input { accent-color: var(--accent); }
+  .toggles { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+  .chip { border: 1px solid var(--line); background: var(--panel-2); border-radius: 999px; padding: 5px 12px; cursor: pointer; color: var(--muted); }
+  .chip.on { border-color: var(--accent); color: var(--text); }
+  input[type=color] { width: 34px; height: 26px; border: 1px solid var(--line); border-radius: 6px; background: none; padding: 0; cursor: pointer; }
+  .hide { display: none !important; }
+
+  .send .summary { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 14px; }
+  .send .summary div { background: var(--panel-2); border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; }
+  .send .summary span { display: block; color: var(--muted); font-size: 12px; }
+  .send .summary b { font-variant-numeric: tabular-nums; font-size: 15px; }
+  .send .btn.primary { width: 100%; padding: 12px; font-size: 15px; }
+  .bar { height: 6px; background: var(--panel-2); border-radius: 3px; overflow: hidden; margin-top: 12px; }
+  .bar i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, var(--accent), var(--accent-2)); transition: width .15s; }
+  .status { margin-top: 8px; font-size: 13px; color: var(--muted); min-height: 1.45em; }
+  .status.ok { color: var(--ok); }
+  .status.err { color: var(--err); }
+  .status.warn { color: var(--warn); }
+  .note { color: var(--muted); font-size: 12.5px; margin-top: 10px; }
+</style>
+</head>
+<body>
+<header>
+  <div class="brand"><span class="dot"></span>Shadow Screen <small>EPOMAKER Shadow-S · 240×135</small></div>
+  <div class="conn">
+    <span class="pill" id="connPill"><i></i><span id="connText">Desconectado</span></span>
+    <button class="btn" id="connectBtn">Conectar teclado</button>
+  </div>
+</header>
+
+<main>
+  <section class="stage">
+    <div class="bezel">
+      <div class="screen">
+        <canvas id="screen" width="240" height="135"></canvas>
+        <div class="drop" id="drop">
+          <div><b>Solte um GIF aqui</b>ou clique para escolher · GIF, WebP, PNG, JPG</div>
+        </div>
+      </div>
+    </div>
+    <div class="stage-meta">
+      <span>Prévia em tamanho real, já com as cores da tela (RGB565)</span>
+      <span><kbd>arrastar</kbd> move · <kbd>scroll</kbd> zoom · <kbd>duplo clique</kbd> centraliza</span>
+    </div>
+    <div class="strip" id="strip"></div>
+  </section>
+
+  <aside class="panel">
+    <div class="card">
+      <h3>Arquivo</h3>
+      <div class="file">
+        <div style="min-width:0">
+          <div class="name" id="fileName">Nenhum arquivo</div>
+          <div class="sub" id="fileInfo">—</div>
+        </div>
+        <button class="btn" id="pickBtn">Escolher</button>
+      </div>
+      <input type="file" id="fileInput" accept="image/gif,image/webp,image/png,image/jpeg,image/apng" hidden>
+    </div>
+
+    <div class="card">
+      <h3>Enquadramento</h3>
+      <div class="seg" id="fitSeg">
+        <button data-v="cover" class="on">Preencher</button>
+        <button data-v="contain">Ajustar</button>
+        <button data-v="stretch">Esticar</button>
+      </div>
+      <div class="slider">
+        <div class="top"><label for="zoom">Zoom</label><span class="val" id="zoomVal">100%</span></div>
+        <input type="range" id="zoom" min="50" max="400" value="100">
+      </div>
+      <div class="row" id="bgRow">
+        <label>Fundo</label>
+        <div style="display:flex;gap:8px;align-items:center">
+          <div class="seg" id="bgSeg" style="width:auto">
+            <button data-v="blur" class="on">Desfocado</button>
+            <button data-v="color">Cor</button>
+          </div>
+          <input type="color" id="bgColor" value="#000000">
+        </div>
+      </div>
+      <div class="toggles">
+        <button class="chip" id="flipBtn">Espelhar</button>
+        <button class="chip" id="rotBtn">Girar 180°</button>
+        <button class="chip" id="centerBtn">Centralizar</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Animação</h3>
+      <div class="slider">
+        <div class="top"><label for="count">Frames</label><span class="val" id="countVal">—</span></div>
+        <input type="range" id="count" min="1" max="50" value="1">
+      </div>
+      <div class="slider">
+        <div class="top"><label>Trecho do GIF</label><span class="val" id="trimVal">—</span></div>
+        <div class="dual">
+          <div class="track"></div><div class="fill" id="trimFill"></div>
+          <input type="range" id="trimA" min="0" max="1000" value="0">
+          <input type="range" id="trimB" min="0" max="1000" value="1000">
+        </div>
+      </div>
+      <div class="row">
+        <label class="check"><input type="checkbox" id="autoIv" checked> Velocidade original</label>
+        <span><input class="num" type="number" id="interval" min="10" max="5000" step="10" value="100"> ms</span>
+      </div>
+      <div class="note" id="animNote">O teclado aceita até 50 frames. Os frames são escolhidos ao longo do trecho inteiro, então a animação não fica cortada.</div>
+    </div>
+
+    <div class="card send">
+      <h3>Enviar</h3>
+      <div class="summary">
+        <div><span>Frames</span><b id="sumFrames">—</b></div>
+        <div><span>Loop no teclado</span><b id="sumLoop">—</b></div>
+        <div><span>Intervalo</span><b id="sumIv">—</b></div>
+        <div><span>Tempo de envio</span><b id="sumEta">—</b></div>
+      </div>
+      <button class="btn primary" id="sendBtn" disabled>Enviar para o teclado</button>
+      <div class="bar"><i id="barFill"></i></div>
+      <div class="status" id="status">Feche o VIA e o Image Custom Tool antes de enviar.</div>
+    </div>
+  </aside>
+</main>
+
+<script>
+"use strict";
+
+// ---------- Protocol (reverse-engineered from Image Custom Tool) ----------
+const W = 240, H = 135, FRAME_BYTES = W * H * 2, STRIDE = 0x10000, CHUNK = 56, MAX_FRAMES = 50;
+const VID = 0x320F, PID = 0x5055, USAGE_PAGE = 0xFF1C, REPORT_ID = 0x04;
+const CMD = { BEGIN: 0x01, END: 0x02, CFG_READ: 0x05, CFG_WRITE: 0x06, DATA: 0x21, PREPARE: 0x23 };
+const CFG_FRAMES = 34, CFG_CLOCK = 35, CFG_INTERVAL = 43;
+const SECONDS_PER_FRAME = 2.4; // measured: ~1171 packets per 64 KB frame at ~2 ms each
+
+function packet(cmd, len = 0, addr = 0, payload = null) {
+  const p = new Uint8Array(64);
+  p[0] = REPORT_ID;
+  p[3] = cmd; p[4] = len;
+  p[5] = addr & 0xFF; p[6] = (addr >> 8) & 0xFF; p[7] = (addr >> 16) & 0xFF;
+  if (payload) p.set(payload, 8);
+  let s = 0;
+  for (let i = 3; i < 64; i++) s += p[i];
+  p[1] = s & 0xFF; p[2] = (s >> 8) & 0xFF;
+  return p;
+}
+
+const bcd = n => ((Math.floor(n / 10) << 4) | (n % 10));
+
+function buildConfig(base, nFrames, intervalMs) {
+  const cfg = new Uint8Array(base);
+  const now = new Date();
+  cfg[CFG_FRAMES] = nFrames;
+  cfg.set([bcd(now.getSeconds()), bcd(now.getMinutes()), bcd(now.getHours()), now.getDay(),
+           bcd(now.getDate()), bcd(now.getMonth() + 1), bcd(now.getFullYear() % 100)], CFG_CLOCK);
+  cfg[CFG_INTERVAL] = intervalMs & 0xFF;
+  cfg[CFG_INTERVAL + 1] = (intervalMs >> 8) & 0xFF;
+  return cfg;
+}
+
+// ---------- WebHID ----------
+let device = null, pending = null;
+
+const isScreenIface = d => d.vendorId === VID && d.productId === PID &&
+  d.collections.some(c => c.usagePage === USAGE_PAGE);
+
+function onInputReport(e) {
+  if (!pending) return;
+  const r = new Uint8Array(8);
+  r[0] = e.reportId;
+  r.set(new Uint8Array(e.data.buffer, e.data.byteOffset, Math.min(7, e.data.byteLength)), 1);
+  const p = pending; pending = null;
+  clearTimeout(p.timer);
+  p.resolve(r);
+}
+
+function xfer(pkt, timeoutMs = 3000) {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => {
+      pending = null;
+      reject(new Error(`O teclado não respondeu ao comando 0x${pkt[3].toString(16)}`));
+    }, timeoutMs);
+    pending = { resolve, timer };
+    device.sendReport(REPORT_ID, pkt.subarray(1)).catch(err => {
+      clearTimeout(timer); pending = null; reject(err);
+    });
+  });
+}
+
+async function useDevice(d) {
+  if (!d.opened) await d.open();
+  d.addEventListener("inputreport", onInputReport);
+  device = d;
+  updateConn();
+}
+
+async function connect(interactive) {
+  if (!("hid" in navigator)) {
+    setStatus("Este navegador não tem WebHID. Use o Chrome ou o Edge.", "err");
+    return;
+  }
+  try {
+    let d = (await navigator.hid.getDevices()).find(isScreenIface);
+    if (!d && interactive) {
+      const picked = await navigator.hid.requestDevice({ filters: [{ vendorId: VID, productId: PID, usagePage: USAGE_PAGE }] });
+      d = picked.find(isScreenIface);
+    }
+    if (d) await useDevice(d);
+  } catch (err) {
+    setStatus(`Não deu para abrir o teclado: ${err.message}. Feche o VIA e o Image Custom Tool e tente de novo.`, "err");
+  }
+}
+
+if ("hid" in navigator) {
+  navigator.hid.addEventListener("disconnect", e => {
+    if (e.device === device) { device = null; updateConn(); }
+  });
+  navigator.hid.addEventListener("connect", e => {
+    if (!device && isScreenIface(e.device)) useDevice(e.device).catch(() => {});
+  });
+}
+
+// ---------- State ----------
+const state = {
+  src: null,            // { name, frames: [{ bmp, dur }], starts: [], total, w, h }
+  fit: "cover", zoom: 1, panX: 0, panY: 0, flip: false, rot: false,
+  bg: "blur", bgColor: "#000000",
+  count: 1, trimA: 0, trimB: 1000, autoIv: true, interval: 100,
+  sel: [], busy: false,
+};
+
+// ---------- Loading ----------
+async function loadFile(file) {
+  if (!file) return;
+  setStatus("Lendo arquivo…");
+  try {
+    const frames = await decode(file);
+    if (!frames.length) throw new Error("nenhum frame encontrado");
+    state.src?.frames.forEach(f => f.bmp.close?.());
+    const starts = []; let t = 0;
+    for (const f of frames) { starts.push(t); t += f.dur; }
+    state.src = { name: file.name, frames, starts, total: t, w: frames[0].bmp.width, h: frames[0].bmp.height };
+    state.panX = state.panY = 0; state.zoom = 1;
+    state.trimA = 0; state.trimB = 1000;
+    state.count = Math.min(MAX_FRAMES, frames.length);
+    state.autoIv = true;
+    syncControls();
+    $("drop").classList.add("hide");
+    $("fileName").textContent = file.name;
+    $("fileInfo").textContent = `${state.src.w}×${state.src.h} · ${frames.length} frame${frames.length > 1 ? "s" : ""} · ${(t / 1000).toFixed(2)} s`;
+    setStatus(frames.length > MAX_FRAMES
+      ? `O GIF tem ${frames.length} frames. Vou usar ${MAX_FRAMES} espalhados pelo GIF inteiro (dá para mudar em Animação).`
+      : "Pronto. Ajuste o enquadramento e envie.", frames.length > MAX_FRAMES ? "warn" : "");
+    changed();
+  } catch (err) {
+    setStatus(`Não consegui ler esse arquivo: ${err.message}`, "err");
+  }
+}
+
+async function decode(file) {
+  if ("ImageDecoder" in window && await ImageDecoder.isTypeSupported(file.type)) {
+    const dec = new ImageDecoder({ data: file.stream(), type: file.type });
+    await dec.tracks.ready;
+    await dec.completed;
+    const track = dec.tracks.selectedTrack;
+    const frames = [];
+    for (let i = 0; i < track.frameCount; i++) {
+      const { image } = await dec.decode({ frameIndex: i });
+      const dur = image.duration ? Math.max(20, image.duration / 1000) : 100;
+      frames.push({ bmp: await createImageBitmap(image), dur });
+      image.close();
+    }
+    dec.close();
+    return frames;
+  }
+  return [{ bmp: await createImageBitmap(file), dur: 100 }];
+}
+
+// ---------- Frame selection ----------
+function trimRange() {
+  const T = state.src.total;
+  return [T * state.trimA / 1000, T * state.trimB / 1000];
+}
+
+function frameAt(t) {
+  const s = state.src.starts;
+  let lo = 0, hi = s.length - 1;
+  while (lo < hi) { const m = (lo + hi + 1) >> 1; if (s[m] <= t) lo = m; else hi = m - 1; }
+  return lo;
+}
+
+function computeSelection() {
+  const { frames } = state.src;
+  const [a, b] = trimRange();
+  const first = frameAt(a), last = frameAt(Math.max(a, b - 0.001));
+  const avail = last - first + 1;
+  const n = Math.max(1, Math.min(state.count, MAX_FRAMES));
+  if (n >= avail) {
+    // Every frame in the range fits: keep them all, in order.
+    state.sel = Array.from({ length: avail }, (_, i) => first + i);
+  } else {
+    const span = Math.max(1, b - a);
+    state.sel = Array.from({ length: n }, (_, k) => frameAt(a + (k + 0.5) * span / n));
+  }
+  if (state.autoIv) {
+    const span = Math.max(1, b - a);
+    state.interval = Math.max(10, Math.min(5000, Math.round(span / state.sel.length)));
+  }
+  return frames;
+}
+
+// ---------- Rendering ----------
+const work = new OffscreenCanvas(W, H);
+const wctx = work.getContext("2d", { willReadFrequently: true });
+const screen = $("screen");
+const sctx = screen.getContext("2d");
+
+function scales() {
+  const { w, h } = state.src;
+  if (state.fit === "stretch") return [W / w * state.zoom, H / h * state.zoom];
+  const base = state.fit === "cover" ? Math.max(W / w, H / h) : Math.min(W / w, H / h);
+  return [base * state.zoom, base * state.zoom];
+}
+
+function clampPan() {
+  if (!state.src) return;
+  const [sx, sy] = scales();
+  const mx = Math.abs(state.src.w * sx - W) / 2, my = Math.abs(state.src.h * sy - H) / 2;
+  state.panX = Math.max(-mx, Math.min(mx, state.panX));
+  state.panY = Math.max(-my, Math.min(my, state.panY));
+}
+
+function orient(ctx) {
+  if (state.rot) ctx.rotate(Math.PI);
+  if (state.flip) ctx.scale(-1, 1);
+}
+
+function drawFrame(ctx, bmp) {
+  const sw = bmp.width, sh = bmp.height;
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.fillStyle = state.bgColor;
+  ctx.fillRect(0, 0, W, H);
+  if (state.fit === "contain" && state.bg === "blur") {
+    const s = Math.max(W / sw, H / sh) * 1.15;
+    ctx.translate(W / 2, H / 2); orient(ctx);
+    ctx.filter = "blur(8px) brightness(0.55) saturate(1.2)";
+    ctx.drawImage(bmp, -sw * s / 2, -sh * s / 2, sw * s, sh * s);
+    ctx.filter = "none";
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+  }
+  const [sx, sy] = scales();
+  ctx.translate(W / 2 + state.panX, H / 2 + state.panY); orient(ctx);
+  ctx.imageSmoothingQuality = "high";
+  ctx.drawImage(bmp, -sw * sx / 2, -sh * sy / 2, sw * sx, sh * sy);
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+}
+
+// RGB888 -> RGB565 big-endian. Optionally writes the quantized color back for preview.
+function to565(img, out, preview) {
+  const d = img.data;
+  for (let i = 0, p = 0; i < d.length; i += 4, p += 2) {
+    const r = d[i] >> 3, g = d[i + 1] >> 2, b = d[i + 2] >> 3;
+    if (out) { const v = (r << 11) | (g << 5) | b; out[p] = v >> 8; out[p + 1] = v & 0xFF; }
+    if (preview) { d[i] = (r << 3) | (r >> 2); d[i + 1] = (g << 2) | (g >> 4); d[i + 2] = (b << 3) | (b >> 2); d[i + 3] = 255; }
+  }
+}
+
+function renderTo(ctx, frameIdx) {
+  drawFrame(wctx, state.src.frames[frameIdx].bmp);
+  const img = wctx.getImageData(0, 0, W, H);
+  to565(img, null, true);
+  ctx.putImageData(img, 0, 0);
+}
+
+// Preview loop
+let playPos = 0, lastSwap = 0, dirty = true;
+function tick(t) {
+  requestAnimationFrame(tick);
+  if (!state.src || !state.sel.length) return;
+  if (t - lastSwap >= state.interval) {
+    playPos = (playPos + 1) % state.sel.length;
+    lastSwap = t; dirty = true;
+  }
+  if (!dirty) return;
+  dirty = false;
+  if (playPos >= state.sel.length) playPos = 0;
+  renderTo(sctx, state.sel[playPos]);
+  const thumbs = $("strip").children;
+  for (let i = 0; i < thumbs.length; i++) thumbs[i].classList.toggle("cur", i === playPos);
+}
+requestAnimationFrame(tick);
+
+let stripTimer = null;
+function renderStrip() {
+  clearTimeout(stripTimer);
+  stripTimer = setTimeout(() => {
+    const strip = $("strip");
+    while (strip.children.length > state.sel.length) strip.lastChild.remove();
+    while (strip.children.length < state.sel.length) {
+      const c = document.createElement("canvas");
+      c.width = W; c.height = H;
+      strip.appendChild(c);
+    }
+    state.sel.forEach((fi, i) => renderTo(strip.children[i].getContext("2d"), fi));
+  }, 120);
+}
+
+// ---------- UI wiring ----------
+function $(id) { return document.getElementById(id); }
+
+function setStatus(msg, kind = "") {
+  const s = $("status");
+  s.textContent = msg;
+  s.className = "status" + (kind ? " " + kind : "");
+}
+
+function updateConn() {
+  const on = !!device;
+  $("connPill").classList.toggle("on", on);
+  $("connText").textContent = on ? "Shadow-S conectado" : "Desconectado";
+  $("connectBtn").classList.toggle("hide", on);
+  updateSend();
+}
+
+function updateSend() {
+  $("sendBtn").disabled = !device || !state.src || state.busy;
+}
+
+function fmtSecs(s) {
+  return s < 60 ? `~${Math.ceil(s)} s` : `~${Math.floor(s / 60)} min ${Math.round(s % 60)} s`;
+}
+
+function changed() {
+  if (!state.src) return;
+  clampPan();
+  computeSelection();
+  const n = state.sel.length;
+  $("countVal").textContent = `${n} de ${Math.min(MAX_FRAMES, state.src.frames.length)}`;
+  $("interval").value = state.interval;
+  $("interval").disabled = state.autoIv;
+  const [a, b] = trimRange();
+  $("trimVal").textContent = `${(a / 1000).toFixed(2)}–${(b / 1000).toFixed(2)} s`;
+  $("trimFill").style.left = `${state.trimA / 10}%`;
+  $("trimFill").style.width = `${(state.trimB - state.trimA) / 10}%`;
+  $("zoomVal").textContent = `${Math.round(state.zoom * 100)}%`;
+  $("sumFrames").textContent = n;
+  $("sumIv").textContent = `${state.interval} ms`;
+  $("sumLoop").textContent = `${(n * state.interval / 1000).toFixed(2)} s`;
+  $("sumEta").textContent = fmtSecs(2 + n * SECONDS_PER_FRAME);
+  $("bgRow").classList.toggle("hide", state.fit !== "contain");
+  $("bgColor").classList.toggle("hide", state.bg !== "color");
+  dirty = true;
+  renderStrip();
+  updateSend();
+}
+
+function syncControls() {
+  $("count").max = Math.min(MAX_FRAMES, state.src.frames.length);
+  $("count").value = state.count;
+  $("count").disabled = state.src.frames.length === 1;
+  $("trimA").value = state.trimA; $("trimB").value = state.trimB;
+  $("zoom").value = Math.round(state.zoom * 100);
+  $("autoIv").checked = state.autoIv;
+}
+
+function segment(id, key) {
+  $(id).addEventListener("click", e => {
+    const b = e.target.closest("button"); if (!b) return;
+    for (const x of $(id).children) x.classList.toggle("on", x === b);
+    state[key] = b.dataset.v;
+    if (key === "fit") { state.panX = state.panY = 0; }
+    changed();
+  });
+}
+segment("fitSeg", "fit");
+segment("bgSeg", "bg");
+
+$("bgColor").addEventListener("input", e => { state.bgColor = e.target.value; changed(); });
+$("zoom").addEventListener("input", e => { state.zoom = e.target.value / 100; changed(); });
+$("flipBtn").addEventListener("click", e => { state.flip = !state.flip; e.target.classList.toggle("on", state.flip); changed(); });
+$("rotBtn").addEventListener("click", e => { state.rot = !state.rot; e.target.classList.toggle("on", state.rot); changed(); });
+$("centerBtn").addEventListener("click", () => { state.panX = state.panY = 0; changed(); });
+$("count").addEventListener("input", e => { state.count = +e.target.value; changed(); });
+$("trimA").addEventListener("input", e => {
+  state.trimA = Math.min(+e.target.value, state.trimB - 10); e.target.value = state.trimA; changed();
+});
+$("trimB").addEventListener("input", e => {
+  state.trimB = Math.max(+e.target.value, state.trimA + 10); e.target.value = state.trimB; changed();
+});
+$("autoIv").addEventListener("change", e => { state.autoIv = e.target.checked; changed(); });
+$("interval").addEventListener("input", e => {
+  const v = Math.round(+e.target.value);
+  if (v >= 10 && v <= 5000) { state.interval = v; changed(); }
+});
+
+// File picking / drag and drop
+$("pickBtn").addEventListener("click", () => $("fileInput").click());
+$("drop").addEventListener("click", () => $("fileInput").click());
+$("fileInput").addEventListener("change", e => loadFile(e.target.files[0]));
+window.addEventListener("dragover", e => { e.preventDefault(); document.body.classList.add("dragover"); });
+window.addEventListener("dragleave", e => { if (!e.relatedTarget) document.body.classList.remove("dragover"); });
+window.addEventListener("drop", e => {
+  e.preventDefault(); document.body.classList.remove("dragover");
+  loadFile(e.dataTransfer.files[0]);
+});
+
+// Pan / zoom on the preview
+let drag = null;
+screen.addEventListener("pointerdown", e => {
+  if (!state.src) return;
+  drag = { x: e.clientX, y: e.clientY, px: state.panX, py: state.panY };
+  screen.setPointerCapture(e.pointerId); screen.classList.add("dragging");
+});
+screen.addEventListener("pointermove", e => {
+  if (!drag) return;
+  const k = W / screen.getBoundingClientRect().width;
+  state.panX = drag.px + (e.clientX - drag.x) * k;
+  state.panY = drag.py + (e.clientY - drag.y) * k;
+  changed();
+});
+screen.addEventListener("pointerup", () => { drag = null; screen.classList.remove("dragging"); });
+screen.addEventListener("wheel", e => {
+  if (!state.src) return;
+  e.preventDefault();
+  state.zoom = Math.max(0.5, Math.min(4, state.zoom * Math.exp(-e.deltaY * 0.0015)));
+  $("zoom").value = Math.round(state.zoom * 100);
+  changed();
+}, { passive: false });
+screen.addEventListener("dblclick", () => { state.panX = state.panY = 0; state.zoom = 1; $("zoom").value = 100; changed(); });
+
+$("connectBtn").addEventListener("click", () => connect(true));
+
+// ---------- Upload ----------
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+$("sendBtn").addEventListener("click", async () => {
+  if (!device || !state.src || state.busy) return;
+  state.busy = true; updateSend();
+  const bar = $("barFill");
+  bar.style.width = "0%";
+  try {
+    const sel = state.sel.slice(), interval = state.interval;
+    const blob = new Uint8Array(sel.length * STRIDE);
+    sel.forEach((fi, k) => {
+      drawFrame(wctx, state.src.frames[fi].bmp);
+      to565(wctx.getImageData(0, 0, W, H), blob.subarray(k * STRIDE, k * STRIDE + FRAME_BYTES), false);
+    });
+
+    setStatus("Conversando com o teclado…");
+    await xfer(packet(CMD.BEGIN));
+    await xfer(packet(CMD.CFG_READ, 1, 0));
+    const base = new Uint8Array(48);
+    for (let a = 0; a < 48; a += 4) base.set((await xfer(packet(CMD.CFG_READ, 4, a))).subarray(4, 8), a);
+    await xfer(packet(CMD.BEGIN));
+    await xfer(packet(CMD.CFG_WRITE, 48, 0, buildConfig(base, sel.length, interval)));
+    await xfer(packet(CMD.END));
+
+    setStatus("Preparando a memória do teclado…");
+    await xfer(packet(CMD.PREPARE), 60000);
+
+    const total = Math.ceil(blob.length / CHUNK);
+    const t0 = performance.now();
+    for (let i = 0; i < total; i++) {
+      const addr = i * CHUNK;
+      const chunk = blob.subarray(addr, Math.min(addr + CHUNK, blob.length));
+      const p = packet(CMD.DATA, chunk.length, addr, chunk);
+      const r = await xfer(p);
+      for (let j = 0; j < 8; j++) {
+        if (r[j] !== p[j]) throw new Error(`confirmação inválida no pacote ${i}`);
+      }
+      if (i === 0) await sleep(500); // the official tool pauses after the first chunk too
+      if (i % 32 === 0 || i === total - 1) {
+        const done = (i + 1) / total;
+        const el = (performance.now() - t0) / 1000;
+        bar.style.width = `${(done * 100).toFixed(1)}%`;
+        setStatus(`Enviando frame ${Math.min(sel.length, Math.floor(addr / STRIDE) + 1)} de ${sel.length} · faltam ${fmtSecs(el / done - el)}`);
+      }
+    }
+    await xfer(packet(CMD.END));
+    bar.style.width = "100%";
+    setStatus(`Pronto! ${sel.length} frames enviados em ${((performance.now() - t0) / 1000 + 2).toFixed(1)} s. O relógio do teclado também foi acertado.`, "ok");
+  } catch (err) {
+    setStatus(`Falhou: ${err.message}. Desconecte e reconecte o teclado e tente de novo.`, "err");
+    try { await xfer(packet(CMD.END), 1000); } catch {}
+  } finally {
+    state.busy = false; updateSend();
+  }
+});
+
+connect(false);
+updateConn();
+</script>
+</body>
+</html>
