@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Shadow Screen</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect x='2' y='8' width='60' height='48' rx='12' fill='%2312141a'/%3E%3Crect x='10' y='17' width='44' height='26' rx='4' fill='%238b7bff'/%3E%3Crect x='16' y='23' width='8' height='8' fill='%230b0820'/%3E%3Crect x='28' y='29' width='8' height='8' fill='%230b0820'/%3E%3Crect x='40' y='23' width='8' height='8' fill='%230b0820'/%3E%3C/svg%3E">
 <style>
   :root {
     --bg: #0a0b0e;
@@ -20,7 +21,7 @@
     --radius: 14px;
   }
   * { box-sizing: border-box; }
-  html, body { margin: 0; height: 100%; }
+  html, body { margin: 0; min-height: 100%; }
   body {
     background: radial-gradient(1200px 600px at 20% -10%, #1a1640 0%, transparent 60%), var(--bg);
     color: var(--text);
@@ -29,7 +30,7 @@
   button, input, select { font: inherit; color: inherit; }
   header {
     display: flex; align-items: center; justify-content: space-between; gap: 16px;
-    padding: 18px 28px; border-bottom: 1px solid var(--line);
+    padding: 16px 28px; border-bottom: 1px solid var(--line);
   }
   .brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 17px; letter-spacing: .2px; }
   .brand .dot { width: 10px; height: 10px; border-radius: 3px; background: var(--accent); box-shadow: 0 0 14px var(--accent); }
@@ -51,12 +52,13 @@
   .btn.primary { background: var(--accent); border-color: var(--accent); color: #0b0820; font-weight: 650; }
   .btn.primary:hover { background: var(--accent-2); }
   .btn:disabled { opacity: .45; cursor: not-allowed; }
+  .btn.small { padding: 5px 10px; font-size: 13px; }
 
   main {
-    display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 24px;
-    padding: 24px 28px 32px; max-width: 1280px; margin: 0 auto;
+    display: grid; grid-template-columns: minmax(0, 1fr) 380px; gap: 24px;
+    padding: 22px 28px 32px; max-width: 1320px; margin: 0 auto;
   }
-  @media (max-width: 980px) { main { grid-template-columns: 1fr; } }
+  @media (max-width: 1000px) { main { grid-template-columns: 1fr; } }
 
   /* Stage */
   .stage { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
@@ -74,37 +76,57 @@
     width: 100%; height: 100%; display: block; image-rendering: pixelated; cursor: grab; touch-action: none;
   }
   .screen canvas.dragging { cursor: grabbing; }
+  .screen.full canvas { cursor: default; }
   .drop {
     position: absolute; inset: 0; display: grid; place-items: center; text-align: center;
     color: var(--muted); border: 2px dashed #2c3140; border-radius: 8px; cursor: pointer;
     background: repeating-linear-gradient(45deg, #0c0d11 0 12px, #0e1015 12px 24px);
   }
   .drop b { display: block; color: var(--text); font-size: 18px; margin-bottom: 4px; }
-  .drop.hidden { display: none; }
   body.dragover .bezel { border-color: var(--accent); }
-  .stage-meta { display: flex; justify-content: space-between; gap: 12px; color: var(--muted); font-size: 13px; flex-wrap: wrap; }
+  .stage-meta { display: flex; justify-content: space-between; align-items: center; gap: 12px; color: var(--muted); font-size: 13px; flex-wrap: wrap; }
   .stage-meta kbd { background: var(--panel-2); border: 1px solid var(--line); border-radius: 5px; padding: 0 5px; font: 12px ui-monospace, monospace; color: var(--text); }
 
-  .strip {
-    display: flex; gap: 6px; overflow-x: auto; padding: 4px 2px 8px; scrollbar-width: thin;
-  }
+  .strip-head { display: flex; justify-content: space-between; color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .08em; font-weight: 650; }
+  .strip { display: flex; gap: 6px; overflow-x: auto; padding: 4px 2px 8px; scrollbar-width: thin; }
   .strip canvas {
     flex: 0 0 auto; width: 64px; height: 36px; border-radius: 4px; outline: 1px solid var(--line);
-    image-rendering: pixelated; opacity: .6;
+    image-rendering: pixelated; opacity: .45; cursor: pointer;
   }
+  .strip canvas.mine { opacity: .85; }
   .strip canvas.cur { outline: 2px solid var(--accent); opacity: 1; }
+  .strip canvas.over { outline-color: var(--err); }
 
   /* Panel */
   .panel { display: flex; flex-direction: column; gap: 14px; }
   .card { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px; }
-  .card h3 { margin: 0 0 12px; font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); font-weight: 650; }
+  .card h3 { margin: 0 0 12px; font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); font-weight: 650; display: flex; justify-content: space-between; align-items: center; }
+  .card h3 .btn { text-transform: none; letter-spacing: 0; font-weight: 500; color: var(--text); }
   .row { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 10px; }
-  .row:first-of-type { margin-top: 0; }
   .row label { color: var(--muted); }
   .val { font-variant-numeric: tabular-nums; color: var(--text); min-width: 64px; text-align: right; }
-  .file { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
-  .file .name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 600; }
-  .file .sub { color: var(--muted); font-size: 12.5px; }
+
+  .queue { display: flex; flex-direction: column; gap: 6px; }
+  .qitem {
+    display: grid; grid-template-columns: 64px minmax(0, 1fr) auto; gap: 10px; align-items: center;
+    padding: 6px; border-radius: 10px; border: 1px solid transparent; cursor: pointer;
+  }
+  .qitem:hover { background: var(--panel-2); }
+  .qitem.sel { background: #1d1a38; border-color: #3a3270; }
+  .qitem canvas { width: 64px; height: 36px; border-radius: 4px; outline: 1px solid var(--line); image-rendering: pixelated; }
+  .qitem .name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 600; font-size: 13.5px; }
+  .qitem .sub { color: var(--muted); font-size: 12px; }
+  .qitem .acts { display: flex; gap: 2px; }
+  .qitem .acts button { border: 0; background: transparent; color: var(--muted); width: 26px; height: 26px; border-radius: 6px; cursor: pointer; }
+  .qitem .acts button:hover { background: #2a2e3a; color: var(--text); }
+  .qempty { color: var(--muted); font-size: 13px; padding: 6px 2px; }
+  .budget { margin-top: 12px; }
+  .budget .top { display: flex; justify-content: space-between; color: var(--muted); font-size: 12.5px; }
+  .budget .top b { color: var(--text); font-variant-numeric: tabular-nums; }
+  .budget.over .top b { color: var(--err); }
+  .budget .meter { height: 6px; background: var(--panel-2); border-radius: 3px; overflow: hidden; margin-top: 6px; }
+  .budget .meter i { display: block; height: 100%; background: var(--accent); transition: width .15s; }
+  .budget.over .meter i { background: var(--err); }
 
   .seg { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; background: var(--panel-2); border: 1px solid var(--line); border-radius: 10px; padding: 3px; gap: 3px; width: 100%; }
   .seg button { border: 0; background: transparent; padding: 7px 6px; border-radius: 7px; cursor: pointer; color: var(--muted); }
@@ -112,13 +134,14 @@
 
   input[type=range] { width: 100%; accent-color: var(--accent); }
   .slider { margin-top: 10px; }
+  .slider:first-child { margin-top: 0; }
   .slider .top { display: flex; justify-content: space-between; color: var(--muted); }
   .dual { position: relative; height: 22px; }
   .dual input { position: absolute; inset: 0; pointer-events: none; background: none; -webkit-appearance: none; appearance: none; }
   .dual input::-webkit-slider-thumb { pointer-events: auto; -webkit-appearance: none; width: 14px; height: 14px; border-radius: 50%; background: var(--accent); border: 2px solid #0b0820; cursor: pointer; }
   .dual .track { position: absolute; left: 0; right: 0; top: 9px; height: 4px; border-radius: 2px; background: var(--line); }
   .dual .fill { position: absolute; top: 9px; height: 4px; border-radius: 2px; background: var(--accent); }
-  .num { width: 76px; background: var(--panel-2); border: 1px solid var(--line); border-radius: 8px; padding: 5px 8px; text-align: right; }
+  .num { width: 84px; background: var(--panel-2); border: 1px solid var(--line); border-radius: 8px; padding: 5px 8px; text-align: right; }
   .check { display: inline-flex; align-items: center; gap: 8px; cursor: pointer; color: var(--muted); }
   .check input { accent-color: var(--accent); }
   .toggles { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
@@ -126,6 +149,7 @@
   .chip.on { border-color: var(--accent); color: var(--text); }
   input[type=color] { width: 34px; height: 26px; border: 1px solid var(--line); border-radius: 6px; background: none; padding: 0; cursor: pointer; }
   .hide { display: none !important; }
+  .disabled { opacity: .4; pointer-events: none; }
 
   .send .summary { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 14px; }
   .send .summary div { background: var(--panel-2); border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; }
@@ -153,35 +177,39 @@
 <main>
   <section class="stage">
     <div class="bezel">
-      <div class="screen">
+      <div class="screen" id="screenBox">
         <canvas id="screen" width="240" height="135"></canvas>
         <div class="drop" id="drop">
-          <div><b>Solte um GIF aqui</b>ou clique para escolher · GIF, WebP, PNG, JPG</div>
+          <div><b>Solte GIFs e imagens aqui</b>ou clique para escolher · dá para soltar vários de uma vez</div>
         </div>
       </div>
     </div>
     <div class="stage-meta">
-      <span>Prévia em tamanho real, já com as cores da tela (RGB565)</span>
+      <button class="chip" id="fullBtn">▶ Prévia da fila inteira</button>
       <span><kbd>arrastar</kbd> move · <kbd>scroll</kbd> zoom · <kbd>duplo clique</kbd> centraliza</span>
     </div>
+    <div class="strip-head"><span>O que vai para o teclado</span><span id="stripCount"></span></div>
     <div class="strip" id="strip"></div>
   </section>
 
   <aside class="panel">
     <div class="card">
-      <h3>Arquivo</h3>
-      <div class="file">
-        <div style="min-width:0">
-          <div class="name" id="fileName">Nenhum arquivo</div>
-          <div class="sub" id="fileInfo">—</div>
-        </div>
-        <button class="btn" id="pickBtn">Escolher</button>
+      <h3>Fila <button class="btn small" id="addBtn">+ Adicionar</button></h3>
+      <div class="queue" id="queue"><div class="qempty">Nenhum item. Adicione GIFs ou imagens.</div></div>
+      <input type="file" id="fileInput" multiple accept="image/gif,image/webp,image/png,image/jpeg,image/apng" hidden>
+      <div class="budget" id="budget">
+        <div class="top"><span>Memória do teclado</span><b id="budgetVal">0 / 50 frames</b></div>
+        <div class="meter"><i id="budgetFill" style="width:0"></i></div>
       </div>
-      <input type="file" id="fileInput" accept="image/gif,image/webp,image/png,image/jpeg,image/apng" hidden>
+      <div class="row">
+        <label class="check"><input type="checkbox" id="autoIv" checked> Intervalo automático</label>
+        <span><input class="num" type="number" id="interval" min="10" max="60000" step="10" value="100"> ms</span>
+      </div>
+      <div class="note" id="ivNote">O teclado usa um único intervalo para a fila toda.</div>
     </div>
 
-    <div class="card">
-      <h3>Enquadramento</h3>
+    <div class="card" id="editCard">
+      <h3>Item selecionado</h3>
       <div class="seg" id="fitSeg">
         <button data-v="cover" class="on">Preencher</button>
         <button data-v="contain">Ajustar</button>
@@ -206,27 +234,27 @@
         <button class="chip" id="rotBtn">Girar 180°</button>
         <button class="chip" id="centerBtn">Centralizar</button>
       </div>
-    </div>
 
-    <div class="card">
-      <h3>Animação</h3>
-      <div class="slider">
-        <div class="top"><label for="count">Frames</label><span class="val" id="countVal">—</span></div>
-        <input type="range" id="count" min="1" max="50" value="1">
-      </div>
-      <div class="slider">
-        <div class="top"><label>Trecho do GIF</label><span class="val" id="trimVal">—</span></div>
-        <div class="dual">
-          <div class="track"></div><div class="fill" id="trimFill"></div>
-          <input type="range" id="trimA" min="0" max="1000" value="0">
-          <input type="range" id="trimB" min="0" max="1000" value="1000">
+      <div id="gifCtl">
+        <div class="slider" style="margin-top:16px">
+          <div class="top"><label for="count">Frames deste GIF</label><span class="val" id="countVal">—</span></div>
+          <input type="range" id="count" min="1" max="50" value="1">
+        </div>
+        <div class="slider">
+          <div class="top"><label>Trecho do GIF</label><span class="val" id="trimVal">—</span></div>
+          <div class="dual">
+            <div class="track"></div><div class="fill" id="trimFill"></div>
+            <input type="range" id="trimA" min="0" max="1000" value="0">
+            <input type="range" id="trimB" min="0" max="1000" value="1000">
+          </div>
         </div>
       </div>
-      <div class="row">
-        <label class="check"><input type="checkbox" id="autoIv" checked> Velocidade original</label>
-        <span><input class="num" type="number" id="interval" min="10" max="5000" step="10" value="100"> ms</span>
+      <div id="imgCtl" class="hide">
+        <div class="slider" style="margin-top:16px">
+          <div class="top"><label for="hold">Tempo na tela</label><span class="val" id="holdVal">—</span></div>
+          <input type="range" id="hold" min="0.5" max="60" step="0.5" value="5">
+        </div>
       </div>
-      <div class="note" id="animNote">O teclado aceita até 50 frames. Os frames são escolhidos ao longo do trecho inteiro, então a animação não fica cortada.</div>
     </div>
 
     <div class="card send">
@@ -247,12 +275,13 @@
 <script>
 "use strict";
 
-// ---------- Protocol (reverse-engineered from Image Custom Tool) ----------
+// ---------- Protocol (reverse-engineered from Image Custom Tool, see PROTOCOL.md) ----------
 const W = 240, H = 135, FRAME_BYTES = W * H * 2, STRIDE = 0x10000, CHUNK = 56, MAX_FRAMES = 50;
 const VID = 0x320F, PID = 0x5055, USAGE_PAGE = 0xFF1C, REPORT_ID = 0x04;
 const CMD = { BEGIN: 0x01, END: 0x02, CFG_READ: 0x05, CFG_WRITE: 0x06, DATA: 0x21, PREPARE: 0x23 };
 const CFG_FRAMES = 34, CFG_CLOCK = 35, CFG_INTERVAL = 43;
 const SECONDS_PER_FRAME = 2.4; // measured: ~1171 packets per 64 KB frame at ~2 ms each
+const MIN_IV = 10, MAX_IV = 60000;
 
 function packet(cmd, len = 0, addr = 0, payload = null) {
   const p = new Uint8Array(64);
@@ -342,40 +371,38 @@ if ("hid" in navigator) {
 }
 
 // ---------- State ----------
-const state = {
-  src: null,            // { name, frames: [{ bmp, dur }], starts: [], total, w, h }
-  fit: "cover", zoom: 1, panX: 0, panY: 0, flip: false, rot: false,
-  bg: "blur", bgColor: "#000000",
-  count: 1, trimA: 0, trimB: 1000, autoIv: true, interval: 100,
-  sel: [], busy: false,
-};
+// Item: { id, name, kind: "gif"|"image", frames: [{ bmp, dur }], starts, total, w, h,
+//         fit, zoom, panX, panY, flip, rot, bg, bgColor, count, trimA, trimB, hold, sel }
+const state = { queue: [], selId: null, autoIv: true, interval: 100, full: false, busy: false, seq: [] };
+let nextId = 1;
+const current = () => state.queue.find(it => it.id === state.selId) || null;
 
 // ---------- Loading ----------
-async function loadFile(file) {
-  if (!file) return;
-  setStatus("Lendo arquivo…");
-  try {
-    const frames = await decode(file);
-    if (!frames.length) throw new Error("nenhum frame encontrado");
-    state.src?.frames.forEach(f => f.bmp.close?.());
-    const starts = []; let t = 0;
-    for (const f of frames) { starts.push(t); t += f.dur; }
-    state.src = { name: file.name, frames, starts, total: t, w: frames[0].bmp.width, h: frames[0].bmp.height };
-    state.panX = state.panY = 0; state.zoom = 1;
-    state.trimA = 0; state.trimB = 1000;
-    state.count = Math.min(MAX_FRAMES, frames.length);
-    state.autoIv = true;
-    syncControls();
-    $("drop").classList.add("hide");
-    $("fileName").textContent = file.name;
-    $("fileInfo").textContent = `${state.src.w}×${state.src.h} · ${frames.length} frame${frames.length > 1 ? "s" : ""} · ${(t / 1000).toFixed(2)} s`;
-    setStatus(frames.length > MAX_FRAMES
-      ? `O GIF tem ${frames.length} frames. Vou usar ${MAX_FRAMES} espalhados pelo GIF inteiro (dá para mudar em Animação).`
-      : "Pronto. Ajuste o enquadramento e envie.", frames.length > MAX_FRAMES ? "warn" : "");
-    changed();
-  } catch (err) {
-    setStatus(`Não consegui ler esse arquivo: ${err.message}`, "err");
+async function addFiles(files) {
+  const list = [...files].filter(f => f.type.startsWith("image/"));
+  if (!list.length) return;
+  for (const file of list) {
+    setStatus(`Lendo ${file.name}…`);
+    try {
+      const frames = await decode(file);
+      if (!frames.length) throw new Error("nenhum frame encontrado");
+      const starts = []; let t = 0;
+      for (const f of frames) { starts.push(t); t += f.dur; }
+      const item = {
+        id: nextId++, name: file.name, kind: frames.length > 1 ? "gif" : "image",
+        frames, starts, total: t, w: frames[0].bmp.width, h: frames[0].bmp.height,
+        fit: "cover", zoom: 1, panX: 0, panY: 0, flip: false, rot: false, bg: "blur", bgColor: "#000000",
+        count: Math.min(MAX_FRAMES, frames.length), trimA: 0, trimB: 1000, hold: 5, sel: [],
+      };
+      state.queue.push(item);
+      state.selId = item.id;
+    } catch (err) {
+      setStatus(`Não consegui ler ${file.name}: ${err.message}`, "err");
+      return structureChanged();
+    }
   }
+  setStatus("Pronto. Ajuste cada item e envie.");
+  structureChanged();
 }
 
 async function decode(file) {
@@ -398,36 +425,47 @@ async function decode(file) {
 }
 
 // ---------- Frame selection ----------
-function trimRange() {
-  const T = state.src.total;
-  return [T * state.trimA / 1000, T * state.trimB / 1000];
+function trimRange(it) {
+  return [it.total * it.trimA / 1000, it.total * it.trimB / 1000];
 }
 
-function frameAt(t) {
-  const s = state.src.starts;
+function frameAt(it, t) {
+  const s = it.starts;
   let lo = 0, hi = s.length - 1;
   while (lo < hi) { const m = (lo + hi + 1) >> 1; if (s[m] <= t) lo = m; else hi = m - 1; }
   return lo;
 }
 
-function computeSelection() {
-  const { frames } = state.src;
-  const [a, b] = trimRange();
-  const first = frameAt(a), last = frameAt(Math.max(a, b - 0.001));
+function gifSelection(it) {
+  const [a, b] = trimRange(it);
+  const first = frameAt(it, a), last = frameAt(it, Math.max(a, b - 0.001));
   const avail = last - first + 1;
-  const n = Math.max(1, Math.min(state.count, MAX_FRAMES));
-  if (n >= avail) {
-    // Every frame in the range fits: keep them all, in order.
-    state.sel = Array.from({ length: avail }, (_, i) => first + i);
-  } else {
-    const span = Math.max(1, b - a);
-    state.sel = Array.from({ length: n }, (_, k) => frameAt(a + (k + 0.5) * span / n));
+  const n = Math.max(1, Math.min(it.count, MAX_FRAMES));
+  if (n >= avail) return Array.from({ length: avail }, (_, i) => first + i);
+  const span = Math.max(1, b - a);
+  return Array.from({ length: n }, (_, k) => frameAt(it, a + (k + 0.5) * span / n));
+}
+
+// Interval that plays this GIF selection at its original speed.
+function naturalInterval(it) {
+  const [a, b] = trimRange(it);
+  return Math.max(1, b - a) / gifSelection(it).length;
+}
+
+const clampIv = v => Math.max(MIN_IV, Math.min(MAX_IV, Math.round(v)));
+const holdFrames = it => Math.max(1, Math.round(it.hold * 1000 / state.interval));
+
+function recompute() {
+  if (state.autoIv && state.queue.length) {
+    const gif = state.queue.find(it => it.kind === "gif");
+    state.interval = gif
+      ? clampIv(naturalInterval(gif))
+      : clampIv(Math.min(...state.queue.map(it => it.hold)) * 1000);
   }
-  if (state.autoIv) {
-    const span = Math.max(1, b - a);
-    state.interval = Math.max(10, Math.min(5000, Math.round(span / state.sel.length)));
+  for (const it of state.queue) {
+    it.sel = it.kind === "gif" ? gifSelection(it) : new Array(holdFrames(it)).fill(0);
   }
-  return frames;
+  state.seq = state.queue.flatMap(it => it.sel.map(fi => ({ it, fi })));
 }
 
 // ---------- Rendering ----------
@@ -436,41 +474,39 @@ const wctx = work.getContext("2d", { willReadFrequently: true });
 const screen = $("screen");
 const sctx = screen.getContext("2d");
 
-function scales() {
-  const { w, h } = state.src;
-  if (state.fit === "stretch") return [W / w * state.zoom, H / h * state.zoom];
-  const base = state.fit === "cover" ? Math.max(W / w, H / h) : Math.min(W / w, H / h);
-  return [base * state.zoom, base * state.zoom];
+function scales(it) {
+  if (it.fit === "stretch") return [W / it.w * it.zoom, H / it.h * it.zoom];
+  const base = it.fit === "cover" ? Math.max(W / it.w, H / it.h) : Math.min(W / it.w, H / it.h);
+  return [base * it.zoom, base * it.zoom];
 }
 
-function clampPan() {
-  if (!state.src) return;
-  const [sx, sy] = scales();
-  const mx = Math.abs(state.src.w * sx - W) / 2, my = Math.abs(state.src.h * sy - H) / 2;
-  state.panX = Math.max(-mx, Math.min(mx, state.panX));
-  state.panY = Math.max(-my, Math.min(my, state.panY));
+function clampPan(it) {
+  const [sx, sy] = scales(it);
+  const mx = Math.abs(it.w * sx - W) / 2, my = Math.abs(it.h * sy - H) / 2;
+  it.panX = Math.max(-mx, Math.min(mx, it.panX));
+  it.panY = Math.max(-my, Math.min(my, it.panY));
 }
 
-function orient(ctx) {
-  if (state.rot) ctx.rotate(Math.PI);
-  if (state.flip) ctx.scale(-1, 1);
+function orient(ctx, it) {
+  if (it.rot) ctx.rotate(Math.PI);
+  if (it.flip) ctx.scale(-1, 1);
 }
 
-function drawFrame(ctx, bmp) {
-  const sw = bmp.width, sh = bmp.height;
+function drawFrame(ctx, it, fi) {
+  const bmp = it.frames[fi].bmp, sw = bmp.width, sh = bmp.height;
   ctx.setTransform(1, 0, 0, 1, 0, 0);
-  ctx.fillStyle = state.bgColor;
+  ctx.fillStyle = it.bgColor;
   ctx.fillRect(0, 0, W, H);
-  if (state.fit === "contain" && state.bg === "blur") {
+  if (it.fit === "contain" && it.bg === "blur") {
     const s = Math.max(W / sw, H / sh) * 1.15;
-    ctx.translate(W / 2, H / 2); orient(ctx);
+    ctx.translate(W / 2, H / 2); orient(ctx, it);
     ctx.filter = "blur(8px) brightness(0.55) saturate(1.2)";
     ctx.drawImage(bmp, -sw * s / 2, -sh * s / 2, sw * s, sh * s);
     ctx.filter = "none";
     ctx.setTransform(1, 0, 0, 1, 0, 0);
   }
-  const [sx, sy] = scales();
-  ctx.translate(W / 2 + state.panX, H / 2 + state.panY); orient(ctx);
+  const [sx, sy] = scales(it);
+  ctx.translate(W / 2 + it.panX, H / 2 + it.panY); orient(ctx, it);
   ctx.imageSmoothingQuality = "high";
   ctx.drawImage(bmp, -sw * sx / 2, -sh * sy / 2, sw * sx, sh * sy);
   ctx.setTransform(1, 0, 0, 1, 0, 0);
@@ -486,47 +522,67 @@ function to565(img, out, preview) {
   }
 }
 
-function renderTo(ctx, frameIdx) {
-  drawFrame(wctx, state.src.frames[frameIdx].bmp);
+function renderTo(ctx, it, fi) {
+  drawFrame(wctx, it, fi);
   const img = wctx.getImageData(0, 0, W, H);
   to565(img, null, true);
   ctx.putImageData(img, 0, 0);
 }
 
-// Preview loop
+// What the preview plays: the selected item alone, or the whole queue.
+function playlist() {
+  if (state.full) return state.seq;
+  const it = current();
+  return it ? it.sel.map(fi => ({ it, fi })) : [];
+}
+
 let playPos = 0, lastSwap = 0, dirty = true;
 function tick(t) {
   requestAnimationFrame(tick);
-  if (!state.src || !state.sel.length) return;
+  const list = playlist();
+  if (!list.length) return;
   if (t - lastSwap >= state.interval) {
-    playPos = (playPos + 1) % state.sel.length;
+    playPos = (playPos + 1) % list.length;
     lastSwap = t; dirty = true;
   }
   if (!dirty) return;
   dirty = false;
-  if (playPos >= state.sel.length) playPos = 0;
-  renderTo(sctx, state.sel[playPos]);
-  const thumbs = $("strip").children;
-  for (let i = 0; i < thumbs.length; i++) thumbs[i].classList.toggle("cur", i === playPos);
+  if (playPos >= list.length) playPos = 0;
+  renderTo(sctx, list[playPos].it, list[playPos].fi);
+  if (state.full) {
+    const thumbs = $("strip").children;
+    for (let i = 0; i < thumbs.length; i++) thumbs[i].classList.toggle("cur", i === playPos);
+  }
 }
 requestAnimationFrame(tick);
 
-let stripTimer = null;
-function renderStrip() {
-  clearTimeout(stripTimer);
-  stripTimer = setTimeout(() => {
-    const strip = $("strip");
-    while (strip.children.length > state.sel.length) strip.lastChild.remove();
-    while (strip.children.length < state.sel.length) {
+let thumbTimer = null;
+function renderThumbs() {
+  clearTimeout(thumbTimer);
+  thumbTimer = setTimeout(() => {
+    const strip = $("strip"), seq = state.seq;
+    while (strip.children.length > seq.length) strip.lastChild.remove();
+    while (strip.children.length < seq.length) {
       const c = document.createElement("canvas");
       c.width = W; c.height = H;
       strip.appendChild(c);
     }
-    state.sel.forEach((fi, i) => renderTo(strip.children[i].getContext("2d"), fi));
-  }, 120);
+    seq.forEach(({ it, fi }, i) => {
+      const c = strip.children[i];
+      c.dataset.id = it.id;
+      c.classList.toggle("mine", it.id === state.selId);
+      c.classList.toggle("over", i >= MAX_FRAMES);
+      c.classList.remove("cur");
+      renderTo(c.getContext("2d"), it, fi);
+    });
+    for (const row of $("queue").querySelectorAll(".qitem")) {
+      const it = state.queue.find(x => x.id === +row.dataset.id);
+      if (it) renderTo(row.querySelector("canvas").getContext("2d"), it, it.sel[0] ?? 0);
+    }
+  }, 100);
 }
 
-// ---------- UI wiring ----------
+// ---------- UI ----------
 function $(id) { return document.getElementById(id); }
 
 function setStatus(msg, kind = "") {
@@ -544,110 +600,209 @@ function updateConn() {
 }
 
 function updateSend() {
-  $("sendBtn").disabled = !device || !state.src || state.busy;
+  const n = state.seq.length;
+  $("sendBtn").disabled = !device || !n || n > MAX_FRAMES || state.busy;
 }
 
 function fmtSecs(s) {
   return s < 60 ? `~${Math.ceil(s)} s` : `~${Math.floor(s / 60)} min ${Math.round(s % 60)} s`;
 }
+const fmtDur = ms => ms >= 1000 ? `${(ms / 1000).toFixed(ms % 1000 ? 1 : 0)} s` : `${ms} ms`;
+
+function itemSub(it) {
+  if (it.kind === "gif") return `GIF · ${it.sel.length} frame${it.sel.length > 1 ? "s" : ""}`;
+  return `Imagem · ${fmtDur(it.sel.length * state.interval)} · ${it.sel.length} frame${it.sel.length > 1 ? "s" : ""}`;
+}
+
+// Rebuild the queue list (items added, removed or reordered).
+function structureChanged() {
+  const q = $("queue");
+  q.innerHTML = "";
+  if (!state.queue.length) {
+    q.innerHTML = '<div class="qempty">Nenhum item. Adicione GIFs ou imagens.</div>';
+  }
+  state.queue.forEach((it, i) => {
+    const row = document.createElement("div");
+    row.className = "qitem";
+    row.dataset.id = it.id;
+    row.innerHTML = `<canvas width="${W}" height="${H}"></canvas>
+      <div style="min-width:0"><div class="name"></div><div class="sub"></div></div>
+      <div class="acts">
+        <button data-act="up" title="Subir">↑</button>
+        <button data-act="down" title="Descer">↓</button>
+        <button data-act="del" title="Remover">✕</button>
+      </div>`;
+    row.querySelector(".name").textContent = `${i + 1}. ${it.name}`;
+    q.appendChild(row);
+  });
+  $("drop").classList.toggle("hide", state.queue.length > 0);
+  if (!current()) state.selId = state.queue[0]?.id ?? null;
+  syncEditor();
+  changed();
+}
+
+$("queue").addEventListener("click", e => {
+  const row = e.target.closest(".qitem"); if (!row) return;
+  const id = +row.dataset.id, i = state.queue.findIndex(it => it.id === id);
+  const act = e.target.closest("button")?.dataset.act;
+  if (act === "del") {
+    state.queue.splice(i, 1)[0].frames.forEach(f => f.bmp.close?.());
+    if (state.selId === id) state.selId = state.queue[Math.min(i, state.queue.length - 1)]?.id ?? null;
+  } else if (act === "up" && i > 0) {
+    [state.queue[i - 1], state.queue[i]] = [state.queue[i], state.queue[i - 1]];
+  } else if (act === "down" && i < state.queue.length - 1) {
+    [state.queue[i + 1], state.queue[i]] = [state.queue[i], state.queue[i + 1]];
+  } else if (!act) {
+    state.selId = id;
+  }
+  structureChanged();
+});
+
+$("strip").addEventListener("click", e => {
+  const c = e.target.closest("canvas"); if (!c) return;
+  state.selId = +c.dataset.id;
+  state.full = false; $("fullBtn").classList.remove("on");
+  structureChanged();
+});
+
+// Sync editor controls from the selected item.
+function syncEditor() {
+  const it = current();
+  $("editCard").classList.toggle("disabled", !it);
+  if (!it) return;
+  for (const b of $("fitSeg").children) b.classList.toggle("on", b.dataset.v === it.fit);
+  for (const b of $("bgSeg").children) b.classList.toggle("on", b.dataset.v === it.bg);
+  $("bgColor").value = it.bgColor;
+  $("zoom").value = Math.round(it.zoom * 100);
+  $("flipBtn").classList.toggle("on", it.flip);
+  $("rotBtn").classList.toggle("on", it.rot);
+  $("gifCtl").classList.toggle("hide", it.kind !== "gif");
+  $("imgCtl").classList.toggle("hide", it.kind !== "image");
+  $("count").max = Math.min(MAX_FRAMES, it.frames.length);
+  $("count").value = it.count;
+  $("trimA").value = it.trimA; $("trimB").value = it.trimB;
+  $("hold").value = it.hold;
+  playPos = 0;
+}
 
 function changed() {
-  if (!state.src) return;
-  clampPan();
-  computeSelection();
-  const n = state.sel.length;
-  $("countVal").textContent = `${n} de ${Math.min(MAX_FRAMES, state.src.frames.length)}`;
+  const it = current();
+  if (it) clampPan(it);
+  recompute();
+  const n = state.seq.length, over = n > MAX_FRAMES;
+
+  // Queue rows' subtitles
+  for (const row of $("queue").querySelectorAll(".qitem")) {
+    const x = state.queue.find(q => q.id === +row.dataset.id);
+    row.classList.toggle("sel", x.id === state.selId);
+    row.querySelector(".sub").textContent = itemSub(x);
+  }
+  $("budget").classList.toggle("over", over);
+  $("budgetVal").textContent = `${n} / ${MAX_FRAMES} frames`;
+  $("budgetFill").style.width = `${Math.min(100, n / MAX_FRAMES * 100)}%`;
   $("interval").value = state.interval;
   $("interval").disabled = state.autoIv;
-  const [a, b] = trimRange();
-  $("trimVal").textContent = `${(a / 1000).toFixed(2)}–${(b / 1000).toFixed(2)} s`;
-  $("trimFill").style.left = `${state.trimA / 10}%`;
-  $("trimFill").style.width = `${(state.trimB - state.trimA) / 10}%`;
-  $("zoomVal").textContent = `${Math.round(state.zoom * 100)}%`;
-  $("sumFrames").textContent = n;
-  $("sumIv").textContent = `${state.interval} ms`;
-  $("sumLoop").textContent = `${(n * state.interval / 1000).toFixed(2)} s`;
-  $("sumEta").textContent = fmtSecs(2 + n * SECONDS_PER_FRAME);
-  $("bgRow").classList.toggle("hide", state.fit !== "contain");
-  $("bgColor").classList.toggle("hide", state.bg !== "color");
+  $("autoIv").checked = state.autoIv;
+  $("ivNote").textContent = over
+    ? `Passou de ${MAX_FRAMES} frames. Diminua os frames dos GIFs, o tempo das imagens ou aumente o intervalo.`
+    : state.queue.some(q => q.kind === "gif") && state.queue.some(q => q.kind === "image")
+      ? "Fila mista: as imagens repetem frames para ficar paradas, e isso gasta memória."
+      : "O teclado usa um único intervalo para a fila toda.";
+  $("ivNote").style.color = over ? "var(--err)" : "";
+  $("stripCount").textContent = n ? `${n} frame${n > 1 ? "s" : ""}` : "";
+
+  if (it) {
+    $("zoomVal").textContent = `${Math.round(it.zoom * 100)}%`;
+    $("bgRow").classList.toggle("hide", it.fit !== "contain");
+    $("bgColor").classList.toggle("hide", it.bg !== "color");
+    if (it.kind === "gif") {
+      $("countVal").textContent = `${it.sel.length} de ${Math.min(MAX_FRAMES, it.frames.length)}`;
+      const [a, b] = trimRange(it);
+      $("trimVal").textContent = `${(a / 1000).toFixed(2)}–${(b / 1000).toFixed(2)} s`;
+      $("trimFill").style.left = `${it.trimA / 10}%`;
+      $("trimFill").style.width = `${(it.trimB - it.trimA) / 10}%`;
+    } else {
+      $("holdVal").textContent = `${it.hold} s` + (it.sel.length * state.interval !== it.hold * 1000 ? ` (≈ ${fmtDur(it.sel.length * state.interval)})` : "");
+    }
+  }
+
+  $("sumFrames").textContent = n || "—";
+  $("sumIv").textContent = n ? fmtDur(state.interval) : "—";
+  $("sumLoop").textContent = n ? fmtDur(n * state.interval) : "—";
+  $("sumEta").textContent = n ? fmtSecs(2 + Math.min(n, MAX_FRAMES) * SECONDS_PER_FRAME) : "—";
+  $("screenBox").classList.toggle("full", state.full);
   dirty = true;
-  renderStrip();
+  renderThumbs();
   updateSend();
 }
 
-function syncControls() {
-  $("count").max = Math.min(MAX_FRAMES, state.src.frames.length);
-  $("count").value = state.count;
-  $("count").disabled = state.src.frames.length === 1;
-  $("trimA").value = state.trimA; $("trimB").value = state.trimB;
-  $("zoom").value = Math.round(state.zoom * 100);
-  $("autoIv").checked = state.autoIv;
-}
+// Editor controls -> selected item
+function edit(fn) { const it = current(); if (it) { fn(it); changed(); } }
 
 function segment(id, key) {
   $(id).addEventListener("click", e => {
     const b = e.target.closest("button"); if (!b) return;
     for (const x of $(id).children) x.classList.toggle("on", x === b);
-    state[key] = b.dataset.v;
-    if (key === "fit") { state.panX = state.panY = 0; }
-    changed();
+    edit(it => { it[key] = b.dataset.v; if (key === "fit") it.panX = it.panY = 0; });
   });
 }
 segment("fitSeg", "fit");
 segment("bgSeg", "bg");
 
-$("bgColor").addEventListener("input", e => { state.bgColor = e.target.value; changed(); });
-$("zoom").addEventListener("input", e => { state.zoom = e.target.value / 100; changed(); });
-$("flipBtn").addEventListener("click", e => { state.flip = !state.flip; e.target.classList.toggle("on", state.flip); changed(); });
-$("rotBtn").addEventListener("click", e => { state.rot = !state.rot; e.target.classList.toggle("on", state.rot); changed(); });
-$("centerBtn").addEventListener("click", () => { state.panX = state.panY = 0; changed(); });
-$("count").addEventListener("input", e => { state.count = +e.target.value; changed(); });
-$("trimA").addEventListener("input", e => {
-  state.trimA = Math.min(+e.target.value, state.trimB - 10); e.target.value = state.trimA; changed();
-});
-$("trimB").addEventListener("input", e => {
-  state.trimB = Math.max(+e.target.value, state.trimA + 10); e.target.value = state.trimB; changed();
-});
+$("bgColor").addEventListener("input", e => edit(it => it.bgColor = e.target.value));
+$("zoom").addEventListener("input", e => edit(it => it.zoom = e.target.value / 100));
+$("flipBtn").addEventListener("click", e => edit(it => { it.flip = !it.flip; e.target.classList.toggle("on", it.flip); }));
+$("rotBtn").addEventListener("click", e => edit(it => { it.rot = !it.rot; e.target.classList.toggle("on", it.rot); }));
+$("centerBtn").addEventListener("click", () => edit(it => it.panX = it.panY = 0));
+$("count").addEventListener("input", e => edit(it => it.count = +e.target.value));
+$("trimA").addEventListener("input", e => edit(it => { it.trimA = Math.min(+e.target.value, it.trimB - 10); e.target.value = it.trimA; }));
+$("trimB").addEventListener("input", e => edit(it => { it.trimB = Math.max(+e.target.value, it.trimA + 10); e.target.value = it.trimB; }));
+$("hold").addEventListener("input", e => edit(it => it.hold = +e.target.value));
+
 $("autoIv").addEventListener("change", e => { state.autoIv = e.target.checked; changed(); });
 $("interval").addEventListener("input", e => {
   const v = Math.round(+e.target.value);
-  if (v >= 10 && v <= 5000) { state.interval = v; changed(); }
+  if (v >= MIN_IV && v <= MAX_IV) { state.interval = v; changed(); }
+});
+$("fullBtn").addEventListener("click", e => {
+  state.full = !state.full; e.target.classList.toggle("on", state.full); playPos = 0; changed();
 });
 
-// File picking / drag and drop
-$("pickBtn").addEventListener("click", () => $("fileInput").click());
+// Files
+$("addBtn").addEventListener("click", () => $("fileInput").click());
 $("drop").addEventListener("click", () => $("fileInput").click());
-$("fileInput").addEventListener("change", e => loadFile(e.target.files[0]));
+$("fileInput").addEventListener("change", e => { addFiles(e.target.files); e.target.value = ""; });
 window.addEventListener("dragover", e => { e.preventDefault(); document.body.classList.add("dragover"); });
 window.addEventListener("dragleave", e => { if (!e.relatedTarget) document.body.classList.remove("dragover"); });
 window.addEventListener("drop", e => {
   e.preventDefault(); document.body.classList.remove("dragover");
-  loadFile(e.dataTransfer.files[0]);
+  addFiles(e.dataTransfer.files);
 });
 
-// Pan / zoom on the preview
+// Pan / zoom on the preview (selected item)
 let drag = null;
+function leaveFull() {
+  if (state.full) { state.full = false; $("fullBtn").classList.remove("on"); }
+}
 screen.addEventListener("pointerdown", e => {
-  if (!state.src) return;
-  drag = { x: e.clientX, y: e.clientY, px: state.panX, py: state.panY };
+  const it = current(); if (!it) return;
+  leaveFull();
+  drag = { x: e.clientX, y: e.clientY, px: it.panX, py: it.panY };
   screen.setPointerCapture(e.pointerId); screen.classList.add("dragging");
 });
 screen.addEventListener("pointermove", e => {
   if (!drag) return;
   const k = W / screen.getBoundingClientRect().width;
-  state.panX = drag.px + (e.clientX - drag.x) * k;
-  state.panY = drag.py + (e.clientY - drag.y) * k;
-  changed();
+  edit(it => { it.panX = drag.px + (e.clientX - drag.x) * k; it.panY = drag.py + (e.clientY - drag.y) * k; });
 });
 screen.addEventListener("pointerup", () => { drag = null; screen.classList.remove("dragging"); });
 screen.addEventListener("wheel", e => {
-  if (!state.src) return;
+  const it = current(); if (!it) return;
   e.preventDefault();
-  state.zoom = Math.max(0.5, Math.min(4, state.zoom * Math.exp(-e.deltaY * 0.0015)));
-  $("zoom").value = Math.round(state.zoom * 100);
-  changed();
+  leaveFull();
+  edit(it => { it.zoom = Math.max(0.5, Math.min(4, it.zoom * Math.exp(-e.deltaY * 0.0015))); $("zoom").value = Math.round(it.zoom * 100); });
 }, { passive: false });
-screen.addEventListener("dblclick", () => { state.panX = state.panY = 0; state.zoom = 1; $("zoom").value = 100; changed(); });
+screen.addEventListener("dblclick", () => edit(it => { it.panX = it.panY = 0; it.zoom = 1; $("zoom").value = 100; }));
 
 $("connectBtn").addEventListener("click", () => connect(true));
 
@@ -655,15 +810,15 @@ $("connectBtn").addEventListener("click", () => connect(true));
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
 $("sendBtn").addEventListener("click", async () => {
-  if (!device || !state.src || state.busy) return;
+  const seq = state.seq.slice(), interval = state.interval;
+  if (!device || !seq.length || seq.length > MAX_FRAMES || state.busy) return;
   state.busy = true; updateSend();
   const bar = $("barFill");
   bar.style.width = "0%";
   try {
-    const sel = state.sel.slice(), interval = state.interval;
-    const blob = new Uint8Array(sel.length * STRIDE);
-    sel.forEach((fi, k) => {
-      drawFrame(wctx, state.src.frames[fi].bmp);
+    const blob = new Uint8Array(seq.length * STRIDE);
+    seq.forEach(({ it, fi }, k) => {
+      drawFrame(wctx, it, fi);
       to565(wctx.getImageData(0, 0, W, H), blob.subarray(k * STRIDE, k * STRIDE + FRAME_BYTES), false);
     });
 
@@ -673,7 +828,7 @@ $("sendBtn").addEventListener("click", async () => {
     const base = new Uint8Array(48);
     for (let a = 0; a < 48; a += 4) base.set((await xfer(packet(CMD.CFG_READ, 4, a))).subarray(4, 8), a);
     await xfer(packet(CMD.BEGIN));
-    await xfer(packet(CMD.CFG_WRITE, 48, 0, buildConfig(base, sel.length, interval)));
+    await xfer(packet(CMD.CFG_WRITE, 48, 0, buildConfig(base, seq.length, interval)));
     await xfer(packet(CMD.END));
 
     setStatus("Preparando a memória do teclado…");
@@ -694,12 +849,12 @@ $("sendBtn").addEventListener("click", async () => {
         const done = (i + 1) / total;
         const el = (performance.now() - t0) / 1000;
         bar.style.width = `${(done * 100).toFixed(1)}%`;
-        setStatus(`Enviando frame ${Math.min(sel.length, Math.floor(addr / STRIDE) + 1)} de ${sel.length} · faltam ${fmtSecs(el / done - el)}`);
+        setStatus(`Enviando frame ${Math.min(seq.length, Math.floor(addr / STRIDE) + 1)} de ${seq.length} · faltam ${fmtSecs(el / done - el)}`);
       }
     }
     await xfer(packet(CMD.END));
     bar.style.width = "100%";
-    setStatus(`Pronto! ${sel.length} frames enviados em ${((performance.now() - t0) / 1000 + 2).toFixed(1)} s. O relógio do teclado também foi acertado.`, "ok");
+    setStatus(`Pronto! ${seq.length} frames enviados em ${((performance.now() - t0) / 1000 + 2).toFixed(1)} s. O relógio do teclado também foi acertado.`, "ok");
   } catch (err) {
     setStatus(`Falhou: ${err.message}. Desconecte e reconecte o teclado e tente de novo.`, "err");
     try { await xfer(packet(CMD.END), 1000); } catch {}
@@ -708,6 +863,7 @@ $("sendBtn").addEventListener("click", async () => {
   }
 });
 
+structureChanged();
 connect(false);
 updateConn();
 </script>
