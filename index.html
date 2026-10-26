@@ -5,51 +5,116 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Shadow Screen</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect x='2' y='8' width='60' height='48' rx='12' fill='%2312141a'/%3E%3Crect x='10' y='17' width='44' height='26' rx='4' fill='%238b7bff'/%3E%3Crect x='16' y='23' width='8' height='8' fill='%230b0820'/%3E%3Crect x='28' y='29' width='8' height='8' fill='%230b0820'/%3E%3Crect x='40' y='23' width='8' height='8' fill='%230b0820'/%3E%3C/svg%3E">
+<script>
+  // Apply the saved theme before first paint to avoid a flash.
+  try { const th = localStorage.getItem("ss-theme"); if (th === "light" || th === "dark") document.documentElement.dataset.theme = th; } catch {}
+</script>
 <style>
   :root {
+    color-scheme: dark;
     --bg: #0a0b0e;
+    --bg-glow: #1a1640;
     --panel: #12141a;
     --panel-2: #191c24;
     --line: #262a35;
+    --hover-line: #3a3f4d;
+    --hover-bg: rgba(255, 255, 255, .07);
     --text: #e8eaf0;
     --muted: #8a90a0;
     --accent: #8b7bff;
     --accent-2: #b3a8ff;
+    --on-accent: #0b0820;
+    --seg-on: #2a2650;
+    --sel-bg: #1d1a38;
+    --sel-line: #3a3270;
+    --drop-a: #0c0d11;
+    --drop-b: #0e1015;
+    --drop-line: #2c3140;
+    --titlebar: rgba(14, 15, 20, .62);
+    --shadow: rgba(139, 123, 255, .35);
     --ok: #3ddc97;
     --warn: #ffb547;
     --err: #ff5d6c;
     --radius: 14px;
   }
+  @media (prefers-color-scheme: light) {
+    :root:not([data-theme="dark"]) {
+      color-scheme: light;
+      --bg: #f3f4f8; --bg-glow: #e4ddff; --panel: #ffffff; --panel-2: #f1f2f6; --line: #dfe2ea;
+      --hover-line: #c4c9d6; --hover-bg: rgba(0, 0, 0, .06); --text: #171a21; --muted: #5f6676;
+      --accent: #6b5bff; --accent-2: #5646f0; --on-accent: #ffffff; --seg-on: #e6e1ff; --sel-bg: #f0edff;
+      --sel-line: #cfc7ff; --drop-a: #e9ebf1; --drop-b: #e3e6ed; --drop-line: #c9cdd8;
+      --titlebar: rgba(255, 255, 255, .62); --shadow: rgba(107, 91, 255, .22);
+      --ok: #12a36a; --warn: #b86e00; --err: #d93848;
+    }
+  }
+  :root[data-theme="light"] {
+    color-scheme: light;
+    --bg: #f3f4f8; --bg-glow: #e4ddff; --panel: #ffffff; --panel-2: #f1f2f6; --line: #dfe2ea;
+    --hover-line: #c4c9d6; --hover-bg: rgba(0, 0, 0, .06); --text: #171a21; --muted: #5f6676;
+    --accent: #6b5bff; --accent-2: #5646f0; --on-accent: #ffffff; --seg-on: #e6e1ff; --sel-bg: #f0edff;
+    --sel-line: #cfc7ff; --drop-a: #e9ebf1; --drop-b: #e3e6ed; --drop-line: #c9cdd8;
+    --titlebar: rgba(255, 255, 255, .62); --shadow: rgba(107, 91, 255, .22);
+    --ok: #12a36a; --warn: #b86e00; --err: #d93848;
+  }
+  :root[data-theme="dark"] { color-scheme: dark; }
+
   * { box-sizing: border-box; }
   html, body { margin: 0; min-height: 100%; }
+  html { scrollbar-width: thin; scrollbar-color: var(--hover-line) transparent; }
   body {
-    background: radial-gradient(1200px 600px at 20% -10%, #1a1640 0%, transparent 60%), var(--bg);
+    background: radial-gradient(1200px 600px at 20% -10%, var(--bg-glow) 0%, transparent 60%), var(--bg);
+    background-attachment: fixed;
     color: var(--text);
-    font: 14px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    font: 14px/1.45 system-ui, -apple-system, "Segoe UI", "Microsoft YaHei UI", Roboto, sans-serif;
   }
   button, input, select { font: inherit; color: inherit; }
+
+  /* Title bar (doubles as the frameless window's title bar inside the desktop app) */
   header {
-    display: flex; align-items: center; justify-content: space-between; gap: 16px;
-    padding: 16px 28px; border-bottom: 1px solid var(--line);
+    position: sticky; top: 0; z-index: 30; height: 58px;
+    display: flex; align-items: center; gap: 12px; padding: 0 10px 0 22px;
+    background: var(--titlebar); border-bottom: 1px solid var(--line);
+    backdrop-filter: blur(20px) saturate(1.5); -webkit-backdrop-filter: blur(20px) saturate(1.5);
   }
-  .brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 17px; letter-spacing: .2px; }
+  .brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 16px; letter-spacing: .2px; white-space: nowrap; }
   .brand .dot { width: 10px; height: 10px; border-radius: 3px; background: var(--accent); box-shadow: 0 0 14px var(--accent); }
-  .brand small { font-weight: 500; color: var(--muted); font-size: 13px; }
-  .conn { display: flex; align-items: center; gap: 10px; }
+  .brand small { font-weight: 500; color: var(--muted); font-size: 12.5px; }
+  .spacer { flex: 1; align-self: stretch; }
+  .tools { display: flex; align-items: center; gap: 8px; }
   .pill {
     display: inline-flex; align-items: center; gap: 8px; padding: 6px 12px; border-radius: 999px;
-    background: var(--panel-2); border: 1px solid var(--line); color: var(--muted); font-size: 13px;
+    background: var(--panel-2); border: 1px solid var(--line); color: var(--muted); font-size: 13px; cursor: pointer; white-space: nowrap;
   }
   .pill i { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); }
-  .pill.on { color: var(--text); }
+  .pill.on { color: var(--text); cursor: default; }
   .pill.on i { background: var(--ok); box-shadow: 0 0 8px var(--ok); }
+  .iconbtn {
+    width: 36px; height: 36px; display: grid; place-items: center; border-radius: 10px; border: 1px solid var(--line);
+    background: var(--panel-2); cursor: pointer; color: var(--muted);
+  }
+  .iconbtn:hover { color: var(--text); border-color: var(--hover-line); }
+  .iconbtn svg { width: 18px; height: 18px; }
+  .lang {
+    height: 36px; border-radius: 10px; border: 1px solid var(--line); background: var(--panel-2); color: var(--text);
+    padding: 0 8px; cursor: pointer;
+  }
+  .winctl { display: none; gap: 4px; margin-left: 6px; padding-left: 10px; border-left: 1px solid var(--line); }
+  body.native .winctl { display: flex; }
+  .winctl button {
+    width: 48px; height: 40px; display: grid; place-items: center; border: 0; border-radius: 10px;
+    background: transparent; color: var(--muted); cursor: pointer; transition: background .12s, color .12s;
+  }
+  .winctl button:hover { background: var(--hover-bg); color: var(--text); }
+  .winctl button.close:hover { background: #e5484d; color: #fff; }
+  .winctl svg { width: 16px; height: 16px; }
 
   .btn {
     border: 1px solid var(--line); background: var(--panel-2); padding: 8px 14px; border-radius: 10px;
-    cursor: pointer; transition: border-color .15s, background .15s;
+    cursor: pointer; transition: border-color .15s, background .15s; white-space: nowrap;
   }
-  .btn:hover { border-color: #3a3f4d; }
-  .btn.primary { background: var(--accent); border-color: var(--accent); color: #0b0820; font-weight: 650; }
+  .btn:hover { border-color: var(--hover-line); }
+  .btn.primary { background: var(--accent); border-color: var(--accent); color: var(--on-accent); font-weight: 650; }
   .btn.primary:hover { background: var(--accent-2); }
   .btn:disabled { opacity: .45; cursor: not-allowed; }
   .btn.small { padding: 5px 10px; font-size: 13px; }
@@ -65,24 +130,22 @@
   .bezel {
     position: relative; padding: 18px; border-radius: 22px;
     background: linear-gradient(180deg, #1b1e27, #0f1116);
-    border: 1px solid var(--line);
-    box-shadow: 0 30px 80px -30px rgba(139, 123, 255, .35), inset 0 1px 0 rgba(255,255,255,.04);
+    border: 1px solid #262a35;
+    box-shadow: 0 30px 80px -30px var(--shadow), inset 0 1px 0 rgba(255,255,255,.04);
   }
   .screen {
     position: relative; width: 100%; aspect-ratio: 240 / 135; border-radius: 8px; overflow: hidden;
     background: #000; outline: 1px solid #000;
   }
-  .screen canvas {
-    width: 100%; height: 100%; display: block; image-rendering: pixelated; cursor: grab; touch-action: none;
-  }
+  .screen canvas { width: 100%; height: 100%; display: block; image-rendering: pixelated; cursor: grab; touch-action: none; }
   .screen canvas.dragging { cursor: grabbing; }
   .screen.full canvas { cursor: default; }
   .drop {
     position: absolute; inset: 0; display: grid; place-items: center; text-align: center;
-    color: var(--muted); border: 2px dashed #2c3140; border-radius: 8px; cursor: pointer;
+    color: #8a90a0; border: 2px dashed #2c3140; border-radius: 8px; cursor: pointer;
     background: repeating-linear-gradient(45deg, #0c0d11 0 12px, #0e1015 12px 24px);
   }
-  .drop b { display: block; color: var(--text); font-size: 18px; margin-bottom: 4px; }
+  .drop b { display: block; color: #e8eaf0; font-size: 18px; margin-bottom: 4px; }
   body.dragover .bezel { border-color: var(--accent); }
   .stage-meta { display: flex; justify-content: space-between; align-items: center; gap: 12px; color: var(--muted); font-size: 13px; flex-wrap: wrap; }
   .stage-meta kbd { background: var(--panel-2); border: 1px solid var(--line); border-radius: 5px; padding: 0 5px; font: 12px ui-monospace, monospace; color: var(--text); }
@@ -112,13 +175,13 @@
     padding: 6px; border-radius: 10px; border: 1px solid transparent; cursor: pointer;
   }
   .qitem:hover { background: var(--panel-2); }
-  .qitem.sel { background: #1d1a38; border-color: #3a3270; }
+  .qitem.sel { background: var(--sel-bg); border-color: var(--sel-line); }
   .qitem canvas { width: 64px; height: 36px; border-radius: 4px; outline: 1px solid var(--line); image-rendering: pixelated; }
   .qitem .name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 600; font-size: 13.5px; }
   .qitem .sub { color: var(--muted); font-size: 12px; }
   .qitem .acts { display: flex; gap: 2px; }
   .qitem .acts button { border: 0; background: transparent; color: var(--muted); width: 26px; height: 26px; border-radius: 6px; cursor: pointer; }
-  .qitem .acts button:hover { background: #2a2e3a; color: var(--text); }
+  .qitem .acts button:hover { background: var(--hover-bg); color: var(--text); }
   .qempty { color: var(--muted); font-size: 13px; padding: 6px 2px; }
   .budget { margin-top: 12px; }
   .budget .top { display: flex; justify-content: space-between; color: var(--muted); font-size: 12.5px; }
@@ -130,15 +193,14 @@
 
   .seg { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; background: var(--panel-2); border: 1px solid var(--line); border-radius: 10px; padding: 3px; gap: 3px; width: 100%; }
   .seg button { border: 0; background: transparent; padding: 7px 6px; border-radius: 7px; cursor: pointer; color: var(--muted); }
-  .seg button.on { background: #2a2650; color: var(--text); }
+  .seg button.on { background: var(--seg-on); color: var(--text); }
 
   input[type=range] { width: 100%; accent-color: var(--accent); }
   .slider { margin-top: 10px; }
-  .slider:first-child { margin-top: 0; }
   .slider .top { display: flex; justify-content: space-between; color: var(--muted); }
   .dual { position: relative; height: 22px; }
   .dual input { position: absolute; inset: 0; pointer-events: none; background: none; -webkit-appearance: none; appearance: none; }
-  .dual input::-webkit-slider-thumb { pointer-events: auto; -webkit-appearance: none; width: 14px; height: 14px; border-radius: 50%; background: var(--accent); border: 2px solid #0b0820; cursor: pointer; }
+  .dual input::-webkit-slider-thumb { pointer-events: auto; -webkit-appearance: none; width: 14px; height: 14px; border-radius: 50%; background: var(--accent); border: 2px solid var(--panel); cursor: pointer; }
   .dual .track { position: absolute; left: 0; right: 0; top: 9px; height: 4px; border-radius: 2px; background: var(--line); }
   .dual .fill { position: absolute; top: 9px; height: 4px; border-radius: 2px; background: var(--accent); }
   .num { width: 84px; background: var(--panel-2); border: 1px solid var(--line); border-radius: 8px; padding: 5px 8px; text-align: right; }
@@ -163,14 +225,70 @@
   .status.err { color: var(--err); }
   .status.warn { color: var(--warn); }
   .note { color: var(--muted); font-size: 12.5px; margin-top: 10px; }
+  .note.err { color: var(--err); }
+
+  /* Connect modal (sits under the title bar so the window stays movable/closable) */
+  .modal-back {
+    position: fixed; inset: 0; z-index: 20; display: grid; place-items: center; padding: 74px 16px 16px;
+    background: color-mix(in srgb, var(--bg) 70%, transparent);
+    backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+    transition: opacity .3s;
+  }
+  .modal-back.fading { opacity: 0; pointer-events: none; }
+  .modal {
+    width: min(460px, 100%); background: var(--panel); border: 1px solid var(--line); border-radius: 20px;
+    padding: 28px 28px 22px; text-align: center; box-shadow: 0 40px 120px -20px var(--shadow);
+  }
+  .modal h2 { margin: 0 0 6px; font-size: 20px; }
+  .modal p { margin: 0; color: var(--muted); }
+  .kb { width: 230px; height: auto; display: block; margin: 0 auto 18px; }
+  .kb-body { fill: var(--panel-2); stroke: var(--line); stroke-width: 1.5; }
+  .kb-key { fill: var(--line); }
+  .kb-cable { fill: none; stroke: var(--muted); stroke-width: 3; stroke-linecap: round; stroke-dasharray: 5 7; animation: dash 1s linear infinite; }
+  .kb-screen { fill: var(--accent); animation: glow 2.4s ease-in-out infinite; }
+  .found .kb-cable { stroke-dasharray: none; stroke: var(--ok); animation: none; }
+  @keyframes dash { to { stroke-dashoffset: -24; } }
+  @keyframes glow { 50% { opacity: .45; } }
+  .seek {
+    display: inline-flex; align-items: center; gap: 10px; margin-top: 18px; padding: 8px 14px; border-radius: 999px;
+    background: var(--panel-2); border: 1px solid var(--line); color: var(--muted); font-size: 13px;
+  }
+  .spin { width: 14px; height: 14px; border-radius: 50%; border: 2px solid var(--line); border-top-color: var(--accent); animation: spin .8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .found .seek { color: var(--ok); border-color: color-mix(in srgb, var(--ok) 40%, transparent); }
+  .found .spin { animation: none; border-color: var(--ok); background: var(--ok); }
+  .conflict {
+    margin-top: 16px; padding: 10px 12px; border-radius: 10px; text-align: left; font-size: 13px; color: var(--warn);
+    background: color-mix(in srgb, var(--warn) 9%, transparent); border: 1px solid color-mix(in srgb, var(--warn) 35%, transparent);
+  }
+  .modal .actions { margin-top: 18px; display: flex; flex-direction: column; align-items: center; gap: 10px; }
+  .ghost { background: transparent; border: 0; color: var(--muted); cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
 </style>
 </head>
 <body>
-<header>
-  <div class="brand"><span class="dot"></span>Shadow Screen <small>EPOMAKER Shadow-S · 240×135</small></div>
-  <div class="conn">
-    <span class="pill" id="connPill"><i></i><span id="connText">Desconectado</span></span>
-    <button class="btn" id="connectBtn">Conectar teclado</button>
+<header id="titlebar" class="pywebview-drag-region">
+  <div class="brand pywebview-drag-region"><span class="dot"></span>Shadow Screen <small>EPOMAKER Shadow-S · 240×135</small></div>
+  <div class="spacer pywebview-drag-region"></div>
+  <div class="tools">
+    <span class="pill" id="connPill"><i></i><span id="connText"></span></span>
+    <button class="btn" id="connectBtn" data-i18n="connect"></button>
+    <select class="lang" id="langSel" aria-label="Language">
+      <option value="pt">PT</option>
+      <option value="en">EN</option>
+      <option value="zh">中文</option>
+    </select>
+    <button class="iconbtn" id="themeBtn"></button>
+  </div>
+  <div class="winctl">
+    <button id="winMin" data-i18n-title="minimize">
+      <svg viewBox="0 0 16 16"><path d="M3 8h10" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+    </button>
+    <button id="winMax">
+      <svg viewBox="0 0 16 16" id="winMaxIcon"><rect x="3" y="3" width="10" height="10" rx="2" fill="none" stroke="currentColor" stroke-width="1.4"/></svg>
+    </button>
+    <button id="winClose" class="close" data-i18n-title="close">
+      <svg viewBox="0 0 16 16"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+    </button>
   </div>
 </header>
 
@@ -180,68 +298,68 @@
       <div class="screen" id="screenBox">
         <canvas id="screen" width="240" height="135"></canvas>
         <div class="drop" id="drop">
-          <div><b>Solte GIFs e imagens aqui</b>ou clique para escolher · dá para soltar vários de uma vez</div>
+          <div><b data-i18n="dropTitle"></b><span data-i18n="dropSub"></span></div>
         </div>
       </div>
     </div>
     <div class="stage-meta">
-      <button class="chip" id="fullBtn">▶ Prévia da fila inteira</button>
-      <span><kbd>arrastar</kbd> move · <kbd>scroll</kbd> zoom · <kbd>duplo clique</kbd> centraliza</span>
+      <button class="chip" id="fullBtn" data-i18n="fullPreview"></button>
+      <span data-i18n-html="hints"></span>
     </div>
-    <div class="strip-head"><span>O que vai para o teclado</span><span id="stripCount"></span></div>
+    <div class="strip-head"><span data-i18n="stripTitle"></span><span id="stripCount"></span></div>
     <div class="strip" id="strip"></div>
   </section>
 
   <aside class="panel">
     <div class="card">
-      <h3>Fila <button class="btn small" id="addBtn">+ Adicionar</button></h3>
-      <div class="queue" id="queue"><div class="qempty">Nenhum item. Adicione GIFs ou imagens.</div></div>
+      <h3><span data-i18n="queue"></span> <button class="btn small" id="addBtn" data-i18n="add"></button></h3>
+      <div class="queue" id="queue"></div>
       <input type="file" id="fileInput" multiple accept="image/gif,image/webp,image/png,image/jpeg,image/apng" hidden>
       <div class="budget" id="budget">
-        <div class="top"><span>Memória do teclado</span><b id="budgetVal">0 / 50 frames</b></div>
+        <div class="top"><span data-i18n="memory"></span><b id="budgetVal"></b></div>
         <div class="meter"><i id="budgetFill" style="width:0"></i></div>
       </div>
       <div class="row">
-        <label class="check"><input type="checkbox" id="autoIv" checked> Intervalo automático</label>
+        <label class="check"><input type="checkbox" id="autoIv" checked> <span data-i18n="autoIv"></span></label>
         <span><input class="num" type="number" id="interval" min="10" max="60000" step="10" value="100"> ms</span>
       </div>
-      <div class="note" id="ivNote">O teclado usa um único intervalo para a fila toda.</div>
+      <div class="note" id="ivNote"></div>
     </div>
 
     <div class="card" id="editCard">
-      <h3>Item selecionado</h3>
+      <h3 data-i18n="selected"></h3>
       <div class="seg" id="fitSeg">
-        <button data-v="cover" class="on">Preencher</button>
-        <button data-v="contain">Ajustar</button>
-        <button data-v="stretch">Esticar</button>
+        <button data-v="cover" class="on" data-i18n="cover"></button>
+        <button data-v="contain" data-i18n="contain"></button>
+        <button data-v="stretch" data-i18n="stretch"></button>
       </div>
       <div class="slider">
-        <div class="top"><label for="zoom">Zoom</label><span class="val" id="zoomVal">100%</span></div>
+        <div class="top"><label for="zoom" data-i18n="zoom"></label><span class="val" id="zoomVal">100%</span></div>
         <input type="range" id="zoom" min="50" max="400" value="100">
       </div>
       <div class="row" id="bgRow">
-        <label>Fundo</label>
+        <label data-i18n="background"></label>
         <div style="display:flex;gap:8px;align-items:center">
           <div class="seg" id="bgSeg" style="width:auto">
-            <button data-v="blur" class="on">Desfocado</button>
-            <button data-v="color">Cor</button>
+            <button data-v="blur" class="on" data-i18n="blur"></button>
+            <button data-v="color" data-i18n="color"></button>
           </div>
           <input type="color" id="bgColor" value="#000000">
         </div>
       </div>
       <div class="toggles">
-        <button class="chip" id="flipBtn">Espelhar</button>
-        <button class="chip" id="rotBtn">Girar 180°</button>
-        <button class="chip" id="centerBtn">Centralizar</button>
+        <button class="chip" id="flipBtn" data-i18n="mirror"></button>
+        <button class="chip" id="rotBtn" data-i18n="rotate"></button>
+        <button class="chip" id="centerBtn" data-i18n="center"></button>
       </div>
 
       <div id="gifCtl">
         <div class="slider" style="margin-top:16px">
-          <div class="top"><label for="count">Frames deste GIF</label><span class="val" id="countVal">—</span></div>
+          <div class="top"><label for="count" data-i18n="gifFrames"></label><span class="val" id="countVal">—</span></div>
           <input type="range" id="count" min="1" max="50" value="1">
         </div>
         <div class="slider">
-          <div class="top"><label>Trecho do GIF</label><span class="val" id="trimVal">—</span></div>
+          <div class="top"><label data-i18n="trim"></label><span class="val" id="trimVal">—</span></div>
           <div class="dual">
             <div class="track"></div><div class="fill" id="trimFill"></div>
             <input type="range" id="trimA" min="0" max="1000" value="0">
@@ -251,29 +369,222 @@
       </div>
       <div id="imgCtl" class="hide">
         <div class="slider" style="margin-top:16px">
-          <div class="top"><label for="hold">Tempo na tela</label><span class="val" id="holdVal">—</span></div>
+          <div class="top"><label for="hold" data-i18n="hold"></label><span class="val" id="holdVal">—</span></div>
           <input type="range" id="hold" min="0.5" max="60" step="0.5" value="5">
         </div>
       </div>
     </div>
 
     <div class="card send">
-      <h3>Enviar</h3>
+      <h3 data-i18n="send"></h3>
       <div class="summary">
-        <div><span>Frames</span><b id="sumFrames">—</b></div>
-        <div><span>Loop no teclado</span><b id="sumLoop">—</b></div>
-        <div><span>Intervalo</span><b id="sumIv">—</b></div>
-        <div><span>Tempo de envio</span><b id="sumEta">—</b></div>
+        <div><span data-i18n="sumFrames"></span><b id="sumFrames">—</b></div>
+        <div><span data-i18n="sumLoop"></span><b id="sumLoop">—</b></div>
+        <div><span data-i18n="sumIv"></span><b id="sumIv">—</b></div>
+        <div><span data-i18n="sumEta"></span><b id="sumEta">—</b></div>
       </div>
-      <button class="btn primary" id="sendBtn" disabled>Enviar para o teclado</button>
+      <button class="btn primary" id="sendBtn" disabled data-i18n="sendBtn"></button>
       <div class="bar"><i id="barFill"></i></div>
-      <div class="status" id="status">Feche o VIA e o Image Custom Tool antes de enviar.</div>
+      <div class="status" id="status"></div>
     </div>
   </aside>
 </main>
 
+<div class="modal-back hide" id="kbModal">
+  <div class="modal" id="kbModalBox">
+    <svg class="kb" viewBox="0 0 260 130" aria-hidden="true">
+      <defs>
+        <pattern id="keys" width="15" height="15" patternUnits="userSpaceOnUse">
+          <rect x="1" y="1" width="12" height="12" rx="2.5" class="kb-key"/>
+        </pattern>
+      </defs>
+      <path class="kb-cable" d="M58 34 C58 14 92 20 94 2"/>
+      <rect class="kb-body" x="10" y="34" width="240" height="88" rx="14"/>
+      <rect x="25" y="65" width="211" height="45" fill="url(#keys)"/>
+      <rect class="kb-key" x="26" y="46" width="12" height="12" rx="2.5"/>
+      <rect class="kb-key" x="44" y="46" width="12" height="12" rx="2.5"/>
+      <rect class="kb-key" x="59" y="46" width="12" height="12" rx="2.5"/>
+      <rect class="kb-screen" x="176" y="44" width="58" height="16" rx="3"/>
+    </svg>
+    <h2 id="mTitle"></h2>
+    <p id="mSub"></p>
+    <div class="seek" id="mSeek"><span class="spin"></span><span id="mSeekText"></span></div>
+    <div class="conflict hide" id="mUnsupported"></div>
+    <div class="conflict hide" id="mConflict"></div>
+    <div class="actions">
+      <button class="btn primary hide" id="mConnect" data-i18n="connect"></button>
+      <button class="ghost" id="mSkip" data-i18n="skip"></button>
+    </div>
+  </div>
+</div>
+
 <script>
 "use strict";
+
+// ---------- i18n ----------
+const I18N = {
+  pt: {
+    connect: "Conectar teclado", disconnected: "Desconectado", connected: "Shadow-S conectado",
+    dropTitle: "Solte GIFs e imagens aqui", dropSub: "ou clique para escolher · dá para soltar vários de uma vez",
+    fullPreview: "▶ Prévia da fila inteira",
+    hints: "<kbd>arrastar</kbd> move · <kbd>scroll</kbd> zoom · <kbd>duplo clique</kbd> centraliza",
+    stripTitle: "O que vai para o teclado", nFrames: "{n} frames",
+    queue: "Fila", add: "+ Adicionar", empty: "Nenhum item. Adicione GIFs ou imagens.", memory: "Memória do teclado",
+    autoIv: "Intervalo automático", ivNote: "O teclado usa um único intervalo para a fila toda.",
+    ivOver: "Passou de {max} frames. Diminua os frames dos GIFs, o tempo das imagens ou aumente o intervalo.",
+    ivMixed: "Fila mista: as imagens repetem frames para ficar paradas, e isso gasta memória.",
+    selected: "Item selecionado", cover: "Preencher", contain: "Ajustar", stretch: "Esticar", zoom: "Zoom",
+    background: "Fundo", blur: "Desfocado", color: "Cor", mirror: "Espelhar", rotate: "Girar 180°", center: "Centralizar",
+    gifFrames: "Frames deste GIF", of: "{a} de {b}", trim: "Trecho do GIF", hold: "Tempo na tela",
+    send: "Enviar", sumFrames: "Frames", sumLoop: "Loop no teclado", sumIv: "Intervalo", sumEta: "Tempo de envio",
+    sendBtn: "Enviar para o teclado",
+    statusIdle: "Feche o VIA e o Image Custom Tool antes de enviar.",
+    reading: "Lendo {name}…", readErr: "Não consegui ler {name}: {err}", ready: "Pronto. Ajuste cada item e envie.",
+    noWebhid: "Este navegador não tem WebHID. Use o Chrome ou o Edge.",
+    openErr: "Não deu para abrir o teclado: {err}. Feche o VIA e o Image Custom Tool e tente de novo.",
+    talking: "Conversando com o teclado…", preparing: "Preparando a memória do teclado…",
+    sending: "Enviando frame {i} de {n} · faltam {eta}",
+    done: "Pronto! {n} frames enviados em {s} s. O relógio do teclado também foi acertado.",
+    failed: "Falhou: {err}. Desconecte e reconecte o teclado e tente de novo.",
+    noReply: "o teclado não respondeu ao comando {cmd}", badAck: "confirmação inválida no pacote {i}",
+    gifSub: "GIF · {n} frames", imgSub: "Imagem · {d} · {n} frames", approx: "≈ {d}",
+    up: "Subir", down: "Descer", remove: "Remover",
+    mTitle: "Conecte seu Shadow-S", mSub: "Ligue o teclado no PC pelo cabo USB. Ele aparece aqui sozinho.",
+    mSubWeb: "Ligue o teclado pelo cabo USB e clique em Conectar para escolher ele.",
+    searching: "Procurando teclado…", waiting: "Aguardando permissão…", found: "Shadow-S encontrado!", foundTitle: "Tudo certo",
+    skip: "Continuar sem teclado",
+    conflict: "Feche o {apps}: ele disputa o teclado e pode atrapalhar o envio.", and: " e o ",
+    unsupported: "Encontrei {names}, mas ele não é compatível. O Shadow Screen só funciona com o EPOMAKER Shadow-S com fio, porque cada modelo usa outro protocolo de tela, e um teclado sem tela não tem o que receber. Nada é enviado para ele.",
+    themeSystem: "Tema: sistema", themeLight: "Tema: claro", themeDark: "Tema: escuro",
+    minimize: "Minimizar", maximize: "Maximizar", restore: "Restaurar", close: "Fechar",
+    secs: "~{s} s", mins: "~{m} min {s} s",
+  },
+  en: {
+    connect: "Connect keyboard", disconnected: "Disconnected", connected: "Shadow-S connected",
+    dropTitle: "Drop GIFs and images here", dropSub: "or click to choose · you can drop several at once",
+    fullPreview: "▶ Preview whole queue",
+    hints: "<kbd>drag</kbd> to pan · <kbd>scroll</kbd> to zoom · <kbd>double-click</kbd> to center",
+    stripTitle: "What goes to the keyboard", nFrames: "{n} frames",
+    queue: "Queue", add: "+ Add", empty: "No items yet. Add GIFs or images.", memory: "Keyboard memory",
+    autoIv: "Automatic interval", ivNote: "The keyboard uses a single interval for the whole queue.",
+    ivOver: "Over {max} frames. Use fewer GIF frames, shorter image times or a longer interval.",
+    ivMixed: "Mixed queue: images repeat frames to stay on screen, which uses memory.",
+    selected: "Selected item", cover: "Fill", contain: "Fit", stretch: "Stretch", zoom: "Zoom",
+    background: "Background", blur: "Blurred", color: "Color", mirror: "Mirror", rotate: "Rotate 180°", center: "Center",
+    gifFrames: "Frames from this GIF", of: "{a} of {b}", trim: "GIF range", hold: "Time on screen",
+    send: "Send", sumFrames: "Frames", sumLoop: "Loop on keyboard", sumIv: "Interval", sumEta: "Upload time",
+    sendBtn: "Send to keyboard",
+    statusIdle: "Close VIA and Image Custom Tool before sending.",
+    reading: "Reading {name}…", readErr: "Couldn't read {name}: {err}", ready: "Ready. Adjust each item and send.",
+    noWebhid: "This browser has no WebHID. Use Chrome or Edge.",
+    openErr: "Couldn't open the keyboard: {err}. Close VIA and Image Custom Tool and try again.",
+    talking: "Talking to the keyboard…", preparing: "Preparing keyboard memory…",
+    sending: "Sending frame {i} of {n} · {eta} left",
+    done: "Done! {n} frames sent in {s} s. The keyboard clock was synced too.",
+    failed: "Failed: {err}. Unplug and replug the keyboard and try again.",
+    noReply: "the keyboard didn't answer command {cmd}", badAck: "invalid ack at packet {i}",
+    gifSub: "GIF · {n} frames", imgSub: "Image · {d} · {n} frames", approx: "≈ {d}",
+    up: "Move up", down: "Move down", remove: "Remove",
+    mTitle: "Connect your Shadow-S", mSub: "Plug the keyboard in with the USB cable. It shows up here automatically.",
+    mSubWeb: "Plug the keyboard in with the USB cable and click Connect to pick it.",
+    searching: "Looking for the keyboard…", waiting: "Waiting for permission…", found: "Shadow-S found!", foundTitle: "All set",
+    skip: "Continue without keyboard",
+    conflict: "Close {apps}: it competes for the keyboard and can break uploads.", and: " and ",
+    unsupported: "Found {names}, but it isn't supported. Shadow Screen only works with the wired EPOMAKER Shadow-S, because each model uses a different screen protocol, and a keyboard without a screen has nothing to receive. Nothing is sent to it.",
+    themeSystem: "Theme: system", themeLight: "Theme: light", themeDark: "Theme: dark",
+    minimize: "Minimize", maximize: "Maximize", restore: "Restore", close: "Close",
+    secs: "~{s} s", mins: "~{m} min {s} s",
+  },
+  zh: {
+    connect: "连接键盘", disconnected: "未连接", connected: "Shadow-S 已连接",
+    dropTitle: "将 GIF 和图片拖到这里", dropSub: "或点击选择 · 可一次拖入多个",
+    fullPreview: "▶ 预览整个队列",
+    hints: "<kbd>拖动</kbd> 移动 · <kbd>滚轮</kbd> 缩放 · <kbd>双击</kbd> 居中",
+    stripTitle: "将发送到键盘的内容", nFrames: "{n} 帧",
+    queue: "队列", add: "+ 添加", empty: "暂无内容，请添加 GIF 或图片。", memory: "键盘存储",
+    autoIv: "自动间隔", ivNote: "键盘对整个队列使用同一个间隔。",
+    ivOver: "超过 {max} 帧。请减少 GIF 帧数、缩短图片时长或增大间隔。",
+    ivMixed: "混合队列：图片通过重复帧来停留，会占用存储。",
+    selected: "选中项", cover: "填充", contain: "适应", stretch: "拉伸", zoom: "缩放",
+    background: "背景", blur: "模糊", color: "颜色", mirror: "镜像", rotate: "旋转 180°", center: "居中",
+    gifFrames: "此 GIF 的帧数", of: "{a} / {b}", trim: "GIF 片段", hold: "显示时长",
+    send: "发送", sumFrames: "帧数", sumLoop: "键盘循环时长", sumIv: "间隔", sumEta: "上传耗时",
+    sendBtn: "发送到键盘",
+    statusIdle: "发送前请关闭 VIA 和 Image Custom Tool。",
+    reading: "正在读取 {name}…", readErr: "无法读取 {name}：{err}", ready: "就绪。调整每一项后发送。",
+    noWebhid: "此浏览器不支持 WebHID，请使用 Chrome 或 Edge。",
+    openErr: "无法打开键盘：{err}。请关闭 VIA 和 Image Custom Tool 后重试。",
+    talking: "正在与键盘通信…", preparing: "正在准备键盘存储…",
+    sending: "正在发送第 {i}/{n} 帧 · 剩余 {eta}",
+    done: "完成！已在 {s} 秒内发送 {n} 帧，键盘时钟也已同步。",
+    failed: "失败：{err}。请重新插拔键盘后重试。",
+    noReply: "键盘未响应命令 {cmd}", badAck: "数据包 {i} 确认无效",
+    gifSub: "GIF · {n} 帧", imgSub: "图片 · {d} · {n} 帧", approx: "≈ {d}",
+    up: "上移", down: "下移", remove: "移除",
+    mTitle: "连接你的 Shadow-S", mSub: "用 USB 线连接键盘，它会自动出现在这里。",
+    mSubWeb: "用 USB 线连接键盘，然后点击“连接键盘”进行选择。",
+    searching: "正在查找键盘…", waiting: "等待授权…", found: "已找到 Shadow-S！", foundTitle: "一切就绪",
+    skip: "暂不连接，继续",
+    conflict: "请关闭 {apps}：它会占用键盘并可能导致发送失败。", and: " 和 ",
+    unsupported: "检测到 {names}，但不受支持。Shadow Screen 仅适用于有线版 EPOMAKER Shadow-S：每个型号的屏幕协议都不同，没有屏幕的键盘也无法接收。不会向其发送任何内容。",
+    themeSystem: "主题：跟随系统", themeLight: "主题：浅色", themeDark: "主题：深色",
+    minimize: "最小化", maximize: "最大化", restore: "还原", close: "关闭",
+    secs: "约 {s} 秒", mins: "约 {m} 分 {s} 秒",
+  },
+};
+
+const store = {
+  get(k) { try { return localStorage.getItem(k); } catch { return null; } },
+  set(k, v) { try { localStorage.setItem(k, v); } catch {} },
+};
+
+let lang = store.get("ss-lang");
+if (!I18N[lang]) {
+  const nav = (navigator.language || "en").toLowerCase();
+  lang = nav.startsWith("pt") ? "pt" : nav.startsWith("zh") ? "zh" : "en";
+}
+
+function t(key, p = {}) {
+  const s = I18N[lang][key] ?? I18N.en[key] ?? key;
+  return s.replace(/\{(\w+)\}/g, (_, k) => p[k] ?? "");
+}
+
+function applyI18n() {
+  document.documentElement.lang = { pt: "pt-BR", en: "en", zh: "zh-CN" }[lang];
+  $("langSel").value = lang;
+  for (const el of document.querySelectorAll("[data-i18n]")) el.textContent = t(el.dataset.i18n);
+  for (const el of document.querySelectorAll("[data-i18n-html]")) el.innerHTML = t(el.dataset.i18nHtml);
+  for (const el of document.querySelectorAll("[data-i18n-title]")) el.title = t(el.dataset.i18nTitle);
+  renderStatus();
+  renderTheme();
+  renderMax();
+  updateConn();
+  renderModal();
+  structureChanged();
+}
+
+// ---------- Theme ----------
+const THEMES = ["system", "light", "dark"];
+let theme = THEMES.includes(store.get("ss-theme")) ? store.get("ss-theme") : "system";
+const THEME_ICONS = {
+  system: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="8"/><path d="M12 4a8 8 0 0 1 0 16z" fill="currentColor"/></svg>',
+  light: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>',
+  dark: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></svg>',
+};
+
+function renderTheme() {
+  if (theme === "system") delete document.documentElement.dataset.theme;
+  else document.documentElement.dataset.theme = theme;
+  $("themeBtn").innerHTML = THEME_ICONS[theme];
+  $("themeBtn").title = t({ system: "themeSystem", light: "themeLight", dark: "themeDark" }[theme]);
+}
+
+$("themeBtn").addEventListener("click", () => {
+  theme = THEMES[(THEMES.indexOf(theme) + 1) % THEMES.length];
+  store.set("ss-theme", theme);
+  renderTheme();
+});
+$("langSel").addEventListener("change", e => { lang = e.target.value; store.set("ss-lang", lang); applyI18n(); });
 
 // ---------- Protocol (reverse-engineered from Image Custom Tool, see PROTOCOL.md) ----------
 const W = 240, H = 135, FRAME_BYTES = W * H * 2, STRIDE = 0x10000, CHUNK = 56, MAX_FRAMES = 50;
@@ -308,8 +619,27 @@ function buildConfig(base, nFrames, intervalMs) {
   return cfg;
 }
 
-// ---------- WebHID ----------
+// ---------- Keyboard access ----------
+// "local": the desktop launcher talks HID for us (/api/*). "webhid": browser-only fallback.
+const hw = { mode: "webhid", connected: false, conflicts: [], unsupported: [], dismissed: false, booted: false };
 let device = null, pending = null;
+const isConnected = () => hw.mode === "local" ? hw.connected : !!device;
+
+async function fetchStatus() {
+  const r = await fetch("/api/status", { cache: "no-store" });
+  if (!r.ok) throw new Error(r.status);
+  return r.json();
+}
+
+function applyStatus(s) {
+  const was = hw.connected;
+  hw.connected = s.connected;
+  hw.conflicts = s.conflicts || [];
+  hw.unsupported = s.unsupported || [];
+  if (was && !s.connected && !state.busy) hw.dismissed = false; // unplugged: ask again
+  updateConn();
+  renderModal();
+}
 
 const isScreenIface = d => d.vendorId === VID && d.productId === PID &&
   d.collections.some(c => c.usagePage === USAGE_PAGE);
@@ -328,7 +658,7 @@ function xfer(pkt, timeoutMs = 3000) {
   return new Promise((resolve, reject) => {
     const timer = setTimeout(() => {
       pending = null;
-      reject(new Error(`O teclado não respondeu ao comando 0x${pkt[3].toString(16)}`));
+      reject(new Error(t("noReply", { cmd: "0x" + pkt[3].toString(16) })));
     }, timeoutMs);
     pending = { resolve, timer };
     device.sendReport(REPORT_ID, pkt.subarray(1)).catch(err => {
@@ -342,13 +672,11 @@ async function useDevice(d) {
   d.addEventListener("inputreport", onInputReport);
   device = d;
   updateConn();
+  renderModal();
 }
 
-async function connect(interactive) {
-  if (!("hid" in navigator)) {
-    setStatus("Este navegador não tem WebHID. Use o Chrome ou o Edge.", "err");
-    return;
-  }
+async function connectWebHID(interactive) {
+  if (!("hid" in navigator)) { setStatus("noWebhid", {}, "err"); return; }
   try {
     let d = (await navigator.hid.getDevices()).find(isScreenIface);
     if (!d && interactive) {
@@ -357,18 +685,89 @@ async function connect(interactive) {
     }
     if (d) await useDevice(d);
   } catch (err) {
-    setStatus(`Não deu para abrir o teclado: ${err.message}. Feche o VIA e o Image Custom Tool e tente de novo.`, "err");
+    setStatus("openErr", { err: err.message }, "err");
   }
 }
 
 if ("hid" in navigator) {
   navigator.hid.addEventListener("disconnect", e => {
-    if (e.device === device) { device = null; updateConn(); }
+    if (e.device === device) { device = null; if (!state.busy) hw.dismissed = false; updateConn(); renderModal(); }
   });
   navigator.hid.addEventListener("connect", e => {
-    if (!device && isScreenIface(e.device)) useDevice(e.device).catch(() => {});
+    if (hw.mode === "webhid" && !device && isScreenIface(e.device)) useDevice(e.device).catch(() => {});
   });
 }
+
+// ---------- Connect modal ----------
+let modalClosing = null, modalOpen = false;
+
+function renderModal() {
+  if (!hw.booted) return;
+  const m = $("kbModal");
+  const want = !isConnected() && !hw.dismissed;
+  const apps = hw.conflicts.join(t("and"));
+  $("mConflict").textContent = apps ? t("conflict", { apps }) : "";
+  $("mConflict").classList.toggle("hide", !apps);
+  const others = hw.unsupported.join(", ");
+  $("mUnsupported").textContent = others ? t("unsupported", { names: others }) : "";
+  $("mUnsupported").classList.toggle("hide", !others);
+  $("mConnect").classList.toggle("hide", hw.mode !== "webhid");
+  $("mSeek").classList.toggle("hide", hw.mode === "webhid");
+
+  if (want) {
+    clearTimeout(modalClosing); modalClosing = null;
+    $("kbModalBox").classList.remove("found");
+    $("mTitle").textContent = t("mTitle");
+    $("mSub").textContent = t(hw.mode === "webhid" ? "mSubWeb" : "mSub");
+    $("mSeekText").textContent = t("searching");
+    m.classList.remove("hide", "fading");
+    modalOpen = true;
+  } else if (modalOpen && !modalClosing) {
+    if (isConnected()) {
+      // Celebrate briefly, then fade out.
+      $("kbModalBox").classList.add("found");
+      $("mTitle").textContent = t("foundTitle");
+      $("mSeekText").textContent = t("found");
+      $("mSeek").classList.remove("hide");
+      modalClosing = setTimeout(closeModal, 900);
+    } else {
+      closeModal();
+    }
+  }
+}
+
+function closeModal() {
+  const m = $("kbModal");
+  m.classList.add("fading");
+  setTimeout(() => { if (m.classList.contains("fading")) m.classList.add("hide"); }, 300);
+  modalOpen = false; modalClosing = null;
+}
+
+$("mSkip").addEventListener("click", () => { hw.dismissed = true; renderModal(); });
+$("mConnect").addEventListener("click", () => connectWebHID(true));
+$("connPill").addEventListener("click", () => {
+  if (isConnected()) return;
+  hw.dismissed = false;
+  renderModal();
+});
+$("connectBtn").addEventListener("click", () => connectWebHID(true));
+
+// ---------- Window controls (desktop app only) ----------
+let maximized = false;
+function renderMax() {
+  $("winMax").title = t(maximized ? "restore" : "maximize");
+  $("winMaxIcon").innerHTML = maximized
+    ? '<rect x="3" y="5" width="8" height="8" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M6 3h5.5A1.5 1.5 0 0 1 13 4.5V10" fill="none" stroke="currentColor" stroke-width="1.4"/>'
+    : '<rect x="3" y="3" width="10" height="10" rx="2" fill="none" stroke="currentColor" stroke-width="1.4"/>';
+}
+async function toggleMax() { maximized = await window.pywebview.api.toggle_maximize(); renderMax(); }
+window.addEventListener("pywebviewready", () => {
+  document.body.classList.add("native");
+  $("winMin").addEventListener("click", () => window.pywebview.api.minimize());
+  $("winMax").addEventListener("click", toggleMax);
+  $("winClose").addEventListener("click", () => window.pywebview.api.close());
+  $("titlebar").addEventListener("dblclick", e => { if (!e.target.closest("button, select, .pill")) toggleMax(); });
+});
 
 // ---------- State ----------
 // Item: { id, name, kind: "gif"|"image", frames: [{ bmp, dur }], starts, total, w, h,
@@ -382,26 +781,26 @@ async function addFiles(files) {
   const list = [...files].filter(f => f.type.startsWith("image/"));
   if (!list.length) return;
   for (const file of list) {
-    setStatus(`Lendo ${file.name}…`);
+    setStatus("reading", { name: file.name });
     try {
       const frames = await decode(file);
-      if (!frames.length) throw new Error("nenhum frame encontrado");
-      const starts = []; let t = 0;
-      for (const f of frames) { starts.push(t); t += f.dur; }
+      if (!frames.length) throw new Error("no frames");
+      const starts = []; let tt = 0;
+      for (const f of frames) { starts.push(tt); tt += f.dur; }
       const item = {
         id: nextId++, name: file.name, kind: frames.length > 1 ? "gif" : "image",
-        frames, starts, total: t, w: frames[0].bmp.width, h: frames[0].bmp.height,
+        frames, starts, total: tt, w: frames[0].bmp.width, h: frames[0].bmp.height,
         fit: "cover", zoom: 1, panX: 0, panY: 0, flip: false, rot: false, bg: "blur", bgColor: "#000000",
         count: Math.min(MAX_FRAMES, frames.length), trimA: 0, trimB: 1000, hold: 5, sel: [],
       };
       state.queue.push(item);
       state.selId = item.id;
     } catch (err) {
-      setStatus(`Não consegui ler ${file.name}: ${err.message}`, "err");
+      setStatus("readErr", { name: file.name, err: err.message }, "err");
       return structureChanged();
     }
   }
-  setStatus("Pronto. Ajuste cada item e envie.");
+  setStatus("ready");
   structureChanged();
 }
 
@@ -429,10 +828,10 @@ function trimRange(it) {
   return [it.total * it.trimA / 1000, it.total * it.trimB / 1000];
 }
 
-function frameAt(it, t) {
+function frameAt(it, tm) {
   const s = it.starts;
   let lo = 0, hi = s.length - 1;
-  while (lo < hi) { const m = (lo + hi + 1) >> 1; if (s[m] <= t) lo = m; else hi = m - 1; }
+  while (lo < hi) { const m = (lo + hi + 1) >> 1; if (s[m] <= tm) lo = m; else hi = m - 1; }
   return lo;
 }
 
@@ -537,13 +936,13 @@ function playlist() {
 }
 
 let playPos = 0, lastSwap = 0, dirty = true;
-function tick(t) {
+function tick(tm) {
   requestAnimationFrame(tick);
   const list = playlist();
   if (!list.length) return;
-  if (t - lastSwap >= state.interval) {
+  if (tm - lastSwap >= state.interval) {
     playPos = (playPos + 1) % list.length;
-    lastSwap = t; dirty = true;
+    lastSwap = tm; dirty = true;
   }
   if (!dirty) return;
   dirty = false;
@@ -585,41 +984,51 @@ function renderThumbs() {
 // ---------- UI ----------
 function $(id) { return document.getElementById(id); }
 
-function setStatus(msg, kind = "") {
+let statusMsg = { key: "statusIdle", p: {}, kind: "" };
+function setStatus(key, p = {}, kind = "") { statusMsg = { key, p, kind }; renderStatus(); }
+function renderStatus() {
   const s = $("status");
-  s.textContent = msg;
-  s.className = "status" + (kind ? " " + kind : "");
+  s.textContent = t(statusMsg.key, statusMsg.p);
+  s.className = "status" + (statusMsg.kind ? " " + statusMsg.kind : "");
 }
 
 function updateConn() {
-  const on = !!device;
+  const on = isConnected();
   $("connPill").classList.toggle("on", on);
-  $("connText").textContent = on ? "Shadow-S conectado" : "Desconectado";
-  $("connectBtn").classList.toggle("hide", on);
+  $("connText").textContent = t(on ? "connected" : "disconnected");
+  $("connectBtn").classList.toggle("hide", on || hw.mode === "local");
+  // Warn about apps that fight over the HID interface.
+  if (on && hw.conflicts.length && !state.busy) {
+    setStatus("conflict", { apps: hw.conflicts.join(t("and")) }, "warn");
+  } else if (statusMsg.key === "conflict" && !hw.conflicts.length) {
+    setStatus("statusIdle");
+  }
   updateSend();
 }
 
 function updateSend() {
   const n = state.seq.length;
-  $("sendBtn").disabled = !device || !n || n > MAX_FRAMES || state.busy;
+  $("sendBtn").disabled = !isConnected() || !n || n > MAX_FRAMES || state.busy;
 }
 
 function fmtSecs(s) {
-  return s < 60 ? `~${Math.ceil(s)} s` : `~${Math.floor(s / 60)} min ${Math.round(s % 60)} s`;
+  return s < 60 ? t("secs", { s: Math.ceil(s) }) : t("mins", { m: Math.floor(s / 60), s: Math.round(s % 60) });
 }
 const fmtDur = ms => ms >= 1000 ? `${(ms / 1000).toFixed(ms % 1000 ? 1 : 0)} s` : `${ms} ms`;
 
 function itemSub(it) {
-  if (it.kind === "gif") return `GIF · ${it.sel.length} frame${it.sel.length > 1 ? "s" : ""}`;
-  return `Imagem · ${fmtDur(it.sel.length * state.interval)} · ${it.sel.length} frame${it.sel.length > 1 ? "s" : ""}`;
+  if (it.kind === "gif") return t("gifSub", { n: it.sel.length });
+  return t("imgSub", { d: fmtDur(it.sel.length * state.interval), n: it.sel.length });
 }
 
-// Rebuild the queue list (items added, removed or reordered).
+// Rebuild the queue list (items added, removed or reordered, or language changed).
 function structureChanged() {
   const q = $("queue");
   q.innerHTML = "";
   if (!state.queue.length) {
-    q.innerHTML = '<div class="qempty">Nenhum item. Adicione GIFs ou imagens.</div>';
+    const e = document.createElement("div");
+    e.className = "qempty"; e.textContent = t("empty");
+    q.appendChild(e);
   }
   state.queue.forEach((it, i) => {
     const row = document.createElement("div");
@@ -628,11 +1037,14 @@ function structureChanged() {
     row.innerHTML = `<canvas width="${W}" height="${H}"></canvas>
       <div style="min-width:0"><div class="name"></div><div class="sub"></div></div>
       <div class="acts">
-        <button data-act="up" title="Subir">↑</button>
-        <button data-act="down" title="Descer">↓</button>
-        <button data-act="del" title="Remover">✕</button>
+        <button data-act="up">↑</button>
+        <button data-act="down">↓</button>
+        <button data-act="del">✕</button>
       </div>`;
     row.querySelector(".name").textContent = `${i + 1}. ${it.name}`;
+    row.querySelector('[data-act="up"]').title = t("up");
+    row.querySelector('[data-act="down"]').title = t("down");
+    row.querySelector('[data-act="del"]').title = t("remove");
     q.appendChild(row);
   });
   $("drop").classList.toggle("hide", state.queue.length > 0);
@@ -691,38 +1103,35 @@ function changed() {
   recompute();
   const n = state.seq.length, over = n > MAX_FRAMES;
 
-  // Queue rows' subtitles
   for (const row of $("queue").querySelectorAll(".qitem")) {
     const x = state.queue.find(q => q.id === +row.dataset.id);
     row.classList.toggle("sel", x.id === state.selId);
     row.querySelector(".sub").textContent = itemSub(x);
   }
   $("budget").classList.toggle("over", over);
-  $("budgetVal").textContent = `${n} / ${MAX_FRAMES} frames`;
+  $("budgetVal").textContent = `${n} / ${MAX_FRAMES}`;
   $("budgetFill").style.width = `${Math.min(100, n / MAX_FRAMES * 100)}%`;
   $("interval").value = state.interval;
   $("interval").disabled = state.autoIv;
   $("autoIv").checked = state.autoIv;
-  $("ivNote").textContent = over
-    ? `Passou de ${MAX_FRAMES} frames. Diminua os frames dos GIFs, o tempo das imagens ou aumente o intervalo.`
-    : state.queue.some(q => q.kind === "gif") && state.queue.some(q => q.kind === "image")
-      ? "Fila mista: as imagens repetem frames para ficar paradas, e isso gasta memória."
-      : "O teclado usa um único intervalo para a fila toda.";
-  $("ivNote").style.color = over ? "var(--err)" : "";
-  $("stripCount").textContent = n ? `${n} frame${n > 1 ? "s" : ""}` : "";
+  const mixed = state.queue.some(q => q.kind === "gif") && state.queue.some(q => q.kind === "image");
+  $("ivNote").textContent = t(over ? "ivOver" : mixed ? "ivMixed" : "ivNote", { max: MAX_FRAMES });
+  $("ivNote").classList.toggle("err", over);
+  $("stripCount").textContent = n ? t("nFrames", { n }) : "";
 
   if (it) {
     $("zoomVal").textContent = `${Math.round(it.zoom * 100)}%`;
     $("bgRow").classList.toggle("hide", it.fit !== "contain");
     $("bgColor").classList.toggle("hide", it.bg !== "color");
     if (it.kind === "gif") {
-      $("countVal").textContent = `${it.sel.length} de ${Math.min(MAX_FRAMES, it.frames.length)}`;
+      $("countVal").textContent = t("of", { a: it.sel.length, b: Math.min(MAX_FRAMES, it.frames.length) });
       const [a, b] = trimRange(it);
       $("trimVal").textContent = `${(a / 1000).toFixed(2)}–${(b / 1000).toFixed(2)} s`;
       $("trimFill").style.left = `${it.trimA / 10}%`;
       $("trimFill").style.width = `${(it.trimB - it.trimA) / 10}%`;
     } else {
-      $("holdVal").textContent = `${it.hold} s` + (it.sel.length * state.interval !== it.hold * 1000 ? ` (≈ ${fmtDur(it.sel.length * state.interval)})` : "");
+      const real = it.sel.length * state.interval;
+      $("holdVal").textContent = `${it.hold} s` + (real !== it.hold * 1000 ? ` (${t("approx", { d: fmtDur(real) })})` : "");
     }
   }
 
@@ -797,75 +1206,106 @@ screen.addEventListener("pointermove", e => {
 });
 screen.addEventListener("pointerup", () => { drag = null; screen.classList.remove("dragging"); });
 screen.addEventListener("wheel", e => {
-  const it = current(); if (!it) return;
+  if (!current()) return;
   e.preventDefault();
   leaveFull();
   edit(it => { it.zoom = Math.max(0.5, Math.min(4, it.zoom * Math.exp(-e.deltaY * 0.0015))); $("zoom").value = Math.round(it.zoom * 100); });
 }, { passive: false });
 screen.addEventListener("dblclick", () => edit(it => { it.panX = it.panY = 0; it.zoom = 1; $("zoom").value = 100; }));
 
-$("connectBtn").addEventListener("click", () => connect(true));
-
 // ---------- Upload ----------
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
+async function uploadWebHID(blob, n, interval, onProgress) {
+  setStatus("talking");
+  await xfer(packet(CMD.BEGIN));
+  await xfer(packet(CMD.CFG_READ, 1, 0));
+  const base = new Uint8Array(48);
+  for (let a = 0; a < 48; a += 4) base.set((await xfer(packet(CMD.CFG_READ, 4, a))).subarray(4, 8), a);
+  await xfer(packet(CMD.BEGIN));
+  await xfer(packet(CMD.CFG_WRITE, 48, 0, buildConfig(base, n, interval)));
+  await xfer(packet(CMD.END));
+  onProgress(0, 0);
+  await xfer(packet(CMD.PREPARE), 60000);
+  const total = Math.ceil(blob.length / CHUNK);
+  for (let i = 0; i < total; i++) {
+    const addr = i * CHUNK;
+    const chunk = blob.subarray(addr, Math.min(addr + CHUNK, blob.length));
+    const p = packet(CMD.DATA, chunk.length, addr, chunk);
+    const r = await xfer(p);
+    for (let j = 0; j < 8; j++) if (r[j] !== p[j]) throw new Error(t("badAck", { i }));
+    if (i === 0) await sleep(500); // the official tool pauses after the first chunk too
+    if (i % 32 === 0 || i === total - 1) onProgress(i + 1, total);
+  }
+  await xfer(packet(CMD.END));
+}
+
+async function uploadLocal(blob, n, interval, onProgress) {
+  const r = await fetch(`/api/upload?frames=${n}&interval=${interval}`, { method: "POST", body: blob });
+  if (!r.ok) {
+    let msg = String(r.status);
+    try { msg = (await r.json()).error; } catch {}
+    throw new Error(msg);
+  }
+  onProgress(0, 0);
+  for (;;) {
+    await sleep(300);
+    const { job } = await fetchStatus();
+    if (job.phase === "error") throw new Error(job.error);
+    onProgress(job.done, job.total);
+    if (job.phase === "done") return;
+  }
+}
+
 $("sendBtn").addEventListener("click", async () => {
-  const seq = state.seq.slice(), interval = state.interval;
-  if (!device || !seq.length || seq.length > MAX_FRAMES || state.busy) return;
+  const seq = state.seq.slice(), interval = state.interval, n = seq.length;
+  if (!isConnected() || !n || n > MAX_FRAMES || state.busy) return;
   state.busy = true; updateSend();
   const bar = $("barFill");
   bar.style.width = "0%";
+  const tClick = performance.now();
+  let tData = 0;
+  const onProgress = (done, total) => {
+    if (!total) { setStatus("preparing"); return; }
+    if (!tData) tData = performance.now();
+    const frac = done / total, el = (performance.now() - tData) / 1000;
+    bar.style.width = `${(frac * 100).toFixed(1)}%`;
+    setStatus("sending", {
+      i: Math.min(n, Math.floor(done * CHUNK / STRIDE) + 1), n,
+      eta: frac > 0.02 ? fmtSecs(el / frac - el) : fmtSecs(n * SECONDS_PER_FRAME),
+    });
+  };
   try {
-    const blob = new Uint8Array(seq.length * STRIDE);
+    const blob = new Uint8Array(n * STRIDE);
     seq.forEach(({ it, fi }, k) => {
       drawFrame(wctx, it, fi);
       to565(wctx.getImageData(0, 0, W, H), blob.subarray(k * STRIDE, k * STRIDE + FRAME_BYTES), false);
     });
-
-    setStatus("Conversando com o teclado…");
-    await xfer(packet(CMD.BEGIN));
-    await xfer(packet(CMD.CFG_READ, 1, 0));
-    const base = new Uint8Array(48);
-    for (let a = 0; a < 48; a += 4) base.set((await xfer(packet(CMD.CFG_READ, 4, a))).subarray(4, 8), a);
-    await xfer(packet(CMD.BEGIN));
-    await xfer(packet(CMD.CFG_WRITE, 48, 0, buildConfig(base, seq.length, interval)));
-    await xfer(packet(CMD.END));
-
-    setStatus("Preparando a memória do teclado…");
-    await xfer(packet(CMD.PREPARE), 60000);
-
-    const total = Math.ceil(blob.length / CHUNK);
-    const t0 = performance.now();
-    for (let i = 0; i < total; i++) {
-      const addr = i * CHUNK;
-      const chunk = blob.subarray(addr, Math.min(addr + CHUNK, blob.length));
-      const p = packet(CMD.DATA, chunk.length, addr, chunk);
-      const r = await xfer(p);
-      for (let j = 0; j < 8; j++) {
-        if (r[j] !== p[j]) throw new Error(`confirmação inválida no pacote ${i}`);
-      }
-      if (i === 0) await sleep(500); // the official tool pauses after the first chunk too
-      if (i % 32 === 0 || i === total - 1) {
-        const done = (i + 1) / total;
-        const el = (performance.now() - t0) / 1000;
-        bar.style.width = `${(done * 100).toFixed(1)}%`;
-        setStatus(`Enviando frame ${Math.min(seq.length, Math.floor(addr / STRIDE) + 1)} de ${seq.length} · faltam ${fmtSecs(el / done - el)}`);
-      }
-    }
-    await xfer(packet(CMD.END));
+    await (hw.mode === "local" ? uploadLocal : uploadWebHID)(blob, n, interval, onProgress);
     bar.style.width = "100%";
-    setStatus(`Pronto! ${seq.length} frames enviados em ${((performance.now() - t0) / 1000 + 2).toFixed(1)} s. O relógio do teclado também foi acertado.`, "ok");
+    setStatus("done", { n, s: ((performance.now() - tClick) / 1000).toFixed(1) }, "ok");
   } catch (err) {
-    setStatus(`Falhou: ${err.message}. Desconecte e reconecte o teclado e tente de novo.`, "err");
-    try { await xfer(packet(CMD.END), 1000); } catch {}
+    setStatus("failed", { err: err.message }, "err");
+    if (hw.mode === "webhid" && device) { try { await xfer(packet(CMD.END), 1000); } catch {} }
   } finally {
     state.busy = false; updateSend();
   }
 });
 
-structureChanged();
-connect(false);
-updateConn();
+// ---------- Boot ----------
+(async () => {
+  try {
+    applyStatus(await fetchStatus());
+    hw.mode = "local";
+    setInterval(() => fetchStatus().then(applyStatus).catch(() => {}), 1000);
+  } catch {
+    hw.mode = "webhid";
+    await connectWebHID(false);
+  }
+  hw.booted = true;
+  applyI18n();
+})();
+applyI18n();
 </script>
 </body>
 </html>

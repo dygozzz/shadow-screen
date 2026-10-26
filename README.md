@@ -28,13 +28,21 @@ repeats its frame to stay on screen longer, and that uses up budget.
 2. Run `Instalar atalhos.cmd` once. It creates **Shadow Screen** shortcuts in the Start Menu and
    on the Desktop.
 3. Open **Shadow Screen**. The launcher (`launcher/shadow_screen.py`, run by `pythonw`) serves the
-   page on `http://localhost:8765` in the background and opens it as a standalone Chrome/Edge app
-   window. Closing the window stops the server.
-4. Click **Conectar teclado**, pick the Shadow-S, add GIFs and images, and hit **Enviar**.
+   page on `http://localhost:8765`, talks to the keyboard over HID with `hidapi`, and opens a
+   frameless `pywebview` window with the app's own translucent title bar. Closing the window
+   stops everything.
+4. Plug in the Shadow-S. A connect dialog waits for it and closes on its own. Add GIFs and
+   images, then hit **Enviar**.
+
+The app follows the system's light/dark theme, and there's a toggle to override it. It's
+available in Portuguese, English and Chinese.
 
 The launcher runs on the signed `pythonw.exe` rather than a bundled `.exe`, because Windows
-Smart App Control blocks unsigned executables. Any static server on `localhost` (or HTTPS) also
-works, since WebHID needs a secure context.
+Smart App Control blocks unsigned executables. Without the launcher, the page also runs from any
+`localhost`/HTTPS server and falls back to WebHID through Chrome's device picker.
+
+Only the wired Shadow-S (`320F:5055`) is supported. Other EPOMAKER models are detected and
+reported as unsupported, and nothing is sent to them.
 
 ## How it works
 

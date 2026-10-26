@@ -9,6 +9,12 @@ if not exist "%PYW%" (
   pause
   exit /b 1
 )
+echo Instalando dependencias (hidapi, pywebview)...
+"%PYW:pythonw.exe=python.exe%" -m pip install --user --quiet --disable-pip-version-check hidapi pywebview || (
+  echo Falha ao instalar as dependencias.
+  pause
+  exit /b 1
+)
 powershell -NoProfile -Command ^
   "$ws = New-Object -ComObject WScript.Shell;" ^
   "foreach ($dir in @([Environment]::GetFolderPath('Programs'), [Environment]::GetFolderPath('Desktop'))) {" ^

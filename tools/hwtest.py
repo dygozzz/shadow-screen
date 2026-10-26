@@ -1,9 +1,12 @@
 """First hardware test: upload 3 new solid colors + a 'OK' frame at 300 ms."""
+import os
+import sys
 import time
 
 from PIL import Image, ImageDraw
 
-import shadow
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "launcher"))
+import shadow  # noqa: E402
 
 frames = []
 for c in [(255, 0, 255), (0, 255, 255), (255, 255, 0)]:
