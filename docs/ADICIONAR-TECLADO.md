@@ -7,6 +7,12 @@ A ideia geral: o programa oficial da EPOMAKER sabe "conversar" com a tela do tec
 **gravamos essa conversa** enquanto ele envia um GIF de teste com cores conhecidas, descobrimos
 o formato e escrevemos um arquivo Python que repete a mesma conversa.
 
+> **Jeito mais fácil:** dê dois cliques em **`DIAGNOSTICO.cmd`** (na raiz do projeto). Ele
+> instala o que falta num ambiente isolado, levanta os dados do teclado, copia o código do
+> programa oficial e conduz a gravação dos passos 2 a 4 abaixo. No fim, gera um zip com log
+> completo na Área de Trabalho. Os passos manuais abaixo continuam valendo para quem quiser
+> entender ou fazer na mão.
+
 > **Atalho:** se você usa o [Claude Code](https://claude.com/claude-code), abra a pasta do
 > projeto nele e peça: *"siga o docs/ADICIONAR-TECLADO.md para adicionar o RT85"*. Ele consegue
 > rodar os passos, ler a gravação e escrever o código com você. Mesmo assim, leia o guia para
