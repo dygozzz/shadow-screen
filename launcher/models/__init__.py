@@ -14,6 +14,7 @@ Each model is a module exposing:
   upload(frames_rgb, interval_ms, progress)
                       frames_rgb is a list of raw RGB888 frames (WIDTH*HEIGHT*3 bytes),
                       progress(done, total) may be called while sending
+  set_clock()         optional: set the keyboard clock to the PC's date and time
 
 To add a keyboard, create a module next to shadow_s.py and list it in MODELS below.
 See docs/ADICIONAR-TECLADO.md.
@@ -39,4 +40,5 @@ def info(m):
         "id": m.ID, "name": m.NAME, "width": m.WIDTH, "height": m.HEIGHT,
         "maxFrames": m.MAX_FRAMES, "secondsPerFrame": m.SECONDS_PER_FRAME, "preview": m.PREVIEW,
         "minInterval": getattr(m, "MIN_INTERVAL_MS", 10), "maxInterval": getattr(m, "MAX_INTERVAL_MS", 60000),
+        "clock": hasattr(m, "set_clock"),
     }

@@ -1,7 +1,7 @@
 """Shadow Screen launcher.
 
 Serves index.html on localhost in the background, talks to the keyboard itself over HID
-(/api/status, /api/upload) and opens the page in a frameless pywebview window with the app's
+(/api/status, /api/upload, /api/clock) and opens the page in a frameless pywebview window with the app's
 own title bar. Falls back to a Chrome/Edge --app window when pywebview isn't installed, and
 the page falls back to WebHID when hidapi isn't installed.
 """
@@ -130,6 +130,8 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         super().do_GET()
 
     def do_POST(self):
+        if HAS_HID and self.path.startswith("/api/clock"):
+            return self.set_clock()
         if not (HAS_HID and self.path.startswith("/api/upload")):
             return self.send_error(404)
         q = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
@@ -151,6 +153,22 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         job.update(phase="sending", done=0, total=0, error=None)
         threading.Thread(target=run_upload, args=(model, blob, n, interval), daemon=True).start()
         self.send_json({"ok": True}, 202)
+
+
+    def set_clock(self):
+        q = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
+        model = models.find_connected()
+        if model is None or model.ID != q.get("model", [""])[0] or not hasattr(model, "set_clock"):
+            return self.send_json({"error": "keyboard not connected"}, 409)
+        if not upload_lock.acquire(blocking=False):
+            return self.send_json({"error": "an upload is already running"}, 409)
+        try:
+            model.set_clock()
+        except Exception as e:
+            return self.send_json({"error": str(e)}, 500)
+        finally:
+            upload_lock.release()
+        self.send_json({"ok": True})
 
 
 # ---------- Window ----------

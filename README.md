@@ -14,7 +14,7 @@ official tool.
 - Per-item framing: **cover**, **contain** (blurred or solid background) or **stretch**, plus drag to pan, scroll to zoom, mirror and rotate 180°
 - GIFs: frames sampled evenly across the whole GIF (or a trimmed range), so animations aren't cut short
 - Images: time on screen (an images-only queue becomes a slideshow, one frame per image)
-- Progress bar and ETA, and the keyboard clock is synced on every upload
+- Progress bar and ETA; the Shadow-S clock is synced on every upload, and a **Set keyboard clock** button syncs it on its own (Shadow-S and RT85)
 
 ### Keyboard limits
 

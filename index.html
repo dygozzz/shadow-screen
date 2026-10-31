@@ -230,6 +230,7 @@
   .send .summary span { display: block; color: var(--muted); font-size: 12px; }
   .send .summary b { font-variant-numeric: tabular-nums; font-size: 15px; }
   .send .btn.primary { width: 100%; padding: 12px; font-size: 15px; }
+  .send .btn.clock { width: 100%; margin-top: 8px; }
   .bar { height: 6px; background: var(--panel-2); border-radius: 3px; overflow: hidden; margin-top: 12px; }
   .bar i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, var(--accent), var(--accent-2)); transition: width .15s; }
   .status { margin-top: 8px; font-size: 13px; color: var(--muted); min-height: 1.45em; }
@@ -398,6 +399,7 @@
         <div><span data-i18n="sumEta"></span><b id="sumEta">—</b></div>
       </div>
       <button class="btn primary" id="sendBtn" disabled data-i18n="sendBtn"></button>
+      <button class="btn clock hide" id="clockBtn" disabled data-i18n="clockBtn"></button>
       <div class="bar"><i id="barFill"></i></div>
       <div class="status" id="status"></div>
     </div>
@@ -451,7 +453,8 @@ const I18N = {
     background: "Fundo", blur: "Desfocado", color: "Cor", mirror: "Espelhar", rotate: "Girar 180°", center: "Centralizar",
     gifFrames: "Frames deste GIF", of: "{a} de {b}", trim: "Trecho do GIF", hold: "Tempo na tela",
     send: "Enviar", sumFrames: "Frames", sumLoop: "Loop no teclado", sumIv: "Intervalo", sumEta: "Tempo de envio",
-    sendBtn: "Enviar para o teclado",
+    sendBtn: "Enviar para o teclado", clockBtn: "🕒 Acertar relógio do teclado",
+    clockDone: "Relógio acertado: {time}.", clockFailed: "Não deu para acertar o relógio: {err}.",
     statusIdle: "Feche o VIA e o Image Custom Tool antes de enviar.",
     reading: "Lendo {name}…", readErr: "Não consegui ler {name}: {err}", ready: "Pronto. Ajuste cada item e envie.",
     noWebhid: "Este navegador não tem WebHID. Use o Chrome ou o Edge.",
@@ -487,7 +490,8 @@ const I18N = {
     background: "Background", blur: "Blurred", color: "Color", mirror: "Mirror", rotate: "Rotate 180°", center: "Center",
     gifFrames: "Frames from this GIF", of: "{a} of {b}", trim: "GIF range", hold: "Time on screen",
     send: "Send", sumFrames: "Frames", sumLoop: "Loop on keyboard", sumIv: "Interval", sumEta: "Upload time",
-    sendBtn: "Send to keyboard",
+    sendBtn: "Send to keyboard", clockBtn: "🕒 Set keyboard clock",
+    clockDone: "Clock set to {time}.", clockFailed: "Couldn't set the clock: {err}.",
     statusIdle: "Close VIA and Image Custom Tool before sending.",
     reading: "Reading {name}…", readErr: "Couldn't read {name}: {err}", ready: "Ready. Adjust each item and send.",
     noWebhid: "This browser has no WebHID. Use Chrome or Edge.",
@@ -523,7 +527,8 @@ const I18N = {
     background: "背景", blur: "模糊", color: "颜色", mirror: "镜像", rotate: "旋转 180°", center: "居中",
     gifFrames: "此 GIF 的帧数", of: "{a} / {b}", trim: "GIF 片段", hold: "显示时长",
     send: "发送", sumFrames: "帧数", sumLoop: "键盘循环时长", sumIv: "间隔", sumEta: "上传耗时",
-    sendBtn: "发送到键盘",
+    sendBtn: "发送到键盘", clockBtn: "🕒 同步键盘时钟",
+    clockDone: "时钟已设为 {time}。", clockFailed: "无法设置时钟：{err}。",
     statusIdle: "发送前请关闭 VIA 和 Image Custom Tool。",
     reading: "正在读取 {name}…", readErr: "无法读取 {name}：{err}", ready: "就绪。调整每一项后发送。",
     noWebhid: "此浏览器不支持 WebHID，请使用 Chrome 或 Edge。",
@@ -1052,6 +1057,8 @@ function updateConn() {
 function updateSend() {
   const n = state.seq.length;
   $("sendBtn").disabled = !isConnected() || !n || n > MAX_FRAMES || state.busy;
+  $("clockBtn").classList.toggle("hide", hw.mode !== "local" || !model.clock);
+  $("clockBtn").disabled = !isConnected() || state.busy;
 }
 
 function fmtSecs(s) {
@@ -1322,6 +1329,24 @@ async function uploadLocal(blob, n, interval, onProgress) {
     if (job.phase === "done") return;
   }
 }
+
+$("clockBtn").addEventListener("click", async () => {
+  if (!isConnected() || state.busy) return;
+  state.busy = true; updateSend();
+  try {
+    const r = await fetch(`/api/clock?model=${encodeURIComponent(model.id)}`, { method: "POST" });
+    if (!r.ok) {
+      let msg = String(r.status);
+      try { msg = (await r.json()).error; } catch {}
+      throw new Error(msg);
+    }
+    setStatus("clockDone", { time: new Date().toLocaleString(document.documentElement.lang) }, "ok");
+  } catch (err) {
+    setStatus("clockFailed", { err: err.message }, "err");
+  } finally {
+    state.busy = false; updateSend();
+  }
+});
 
 $("sendBtn").addEventListener("click", async () => {
   const seq = state.seq.slice(), interval = state.interval, n = seq.length;

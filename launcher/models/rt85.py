@@ -15,8 +15,8 @@ Pixels: RGB565 big-endian, column-major (x outer, y inner), bounding box (l, t, 
 exclusive; we always send the full 320x172 box.
 
 The PID 0x5002 is shared by ~100 Rongyuan keyboards, so the firmware id (command 0x8F, reply
-bytes 1..4 little-endian) must be 2895 before anything else is sent. Only 0x8F, 0xA5 and 0x25
-are ever sent: the same firmware also has bootloader, reset and flash-erase commands.
+bytes 1..4 little-endian) must be 2895 before anything else is sent. Only 0x8F, 0xA5, 0x25 and
+the clock command 0x28 (setOLEDClock: year BE at 8..9, then month, day, hour, min, sec) are ever sent: the same firmware also has bootloader, reset and flash-erase commands.
 """
 import struct
 import time
@@ -36,8 +36,8 @@ MIN_INTERVAL_MS, MAX_INTERVAL_MS = 1, 255  # frame delay is a single byte
 SECONDS_PER_FRAME = 8.0  # ~1966 packets per frame with a 2 ms gap; refine after real uploads
 PREVIEW = "rgb565"
 
-CMD_WHO_AM_I, CMD_LCD_HEADER, CMD_LCD_DATA = 0x8F, 0xA5, 0x25
-ALLOWED = {CMD_WHO_AM_I, CMD_LCD_HEADER, CMD_LCD_DATA}
+CMD_WHO_AM_I, CMD_LCD_HEADER, CMD_LCD_DATA, CMD_CLOCK = 0x8F, 0xA5, 0x25, 0x28
+ALLOWED = {CMD_WHO_AM_I, CMD_LCD_HEADER, CMD_LCD_DATA, CMD_CLOCK}
 PACKET_GAP_S = 0.002     # vendor app: electronUploadPacketDelay default 2 ms
 
 
@@ -102,6 +102,14 @@ class Keyboard:
                 return
             time.sleep(0.1)
         raise RuntimeError("the RT85 did not accept the image header")
+
+    def set_clock(self):
+        now = time.localtime()
+        p = bytearray(64)
+        p[0] = CMD_CLOCK
+        p[8], p[9] = now.tm_year >> 8, now.tm_year & 0xFF
+        p[10:15] = bytes([now.tm_mon, now.tm_mday, now.tm_hour, now.tm_min, now.tm_sec])
+        self.send(p, 0)  # the vendor app reads no reply for this one
 
     def frame(self, frame, n_frames, delay, data, progress=None):
         chunks = (len(data) + CHUNK - 1) // CHUNK
@@ -172,5 +180,15 @@ def upload(frames_rgb, interval_ms, progress=None):
                 kb.frame(k, n, delay, data, progress and (lambda i, k=k: progress(k * chunks + i, total)))
         if progress:
             progress(total, total)
+    finally:
+        kb.close()
+
+
+def set_clock():
+    kb = Keyboard()
+    try:
+        if kb.firmware_id() != FIRMWARE_ID:
+            raise RuntimeError("this keyboard is not an RT85 (firmware id mismatch); nothing was sent")
+        kb.set_clock()
     finally:
         kb.close()

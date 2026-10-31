@@ -115,6 +115,16 @@ class Keyboard:
             cfg += self.xfer(packet(CMD_CFG_READ, 4, addr))[4:8]
         return bytes(cfg)
 
+    def set_clock(self):
+        """Rewrite the config block with the PC's date/time, keeping frame count and interval.
+        The official tool sends this same begin/config/end sequence when only settings change."""
+        self.xfer(packet(CMD_BEGIN))
+        base = self.read_config()
+        self.xfer(packet(CMD_BEGIN))
+        cfg = build_config(base, base[CFG_FRAMES], base[CFG_INTERVAL] | (base[CFG_INTERVAL + 1] << 8))
+        self.xfer(packet(CMD_CFG_WRITE, len(cfg), 0, cfg))
+        self.xfer(packet(CMD_END))
+
     def upload(self, frames_565, interval_ms, progress=None):
         assert 1 <= len(frames_565) <= MAX_FRAMES
         self.xfer(packet(CMD_BEGIN))
@@ -150,5 +160,13 @@ def upload(frames_rgb, interval_ms, progress=None):
     kb = Keyboard()
     try:
         kb.upload([rgb_to_565_be(f) for f in frames_rgb], interval_ms, progress)
+    finally:
+        kb.close()
+
+
+def set_clock():
+    kb = Keyboard()
+    try:
+        kb.set_clock()
     finally:
         kb.close()
