@@ -906,8 +906,9 @@ function renderModelInfo() {
 
 // Switch the whole app to another keyboard's screen size and limits.
 function setModel(m) {
-  if (m.id === model.id && m.width === W && m.height === H && m.maxFrames === MAX_FRAMES) return;
-  model = m;
+  const same = m.id === model.id && m.width === W && m.height === H && m.maxFrames === MAX_FRAMES;
+  model = m; // always keep the reported features (e.g. clock support), even for the same screen
+  if (same) return;
   W = m.width; H = m.height; MAX_FRAMES = m.maxFrames; SECONDS_PER_FRAME = m.secondsPerFrame;
   MIN_IV = m.minInterval ?? 10; MAX_IV = m.maxInterval ?? 60000;
   $("interval").min = MIN_IV; $("interval").max = MAX_IV;
